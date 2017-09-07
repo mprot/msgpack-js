@@ -289,7 +289,7 @@ function runTests(t: T): void {
 				t.error(`unexpected encoding at ${i} for '${test.val}': ${fmtBuf(bin)}, expected ${fmtBuf(expected)}`);
 			}
 		} catch(e) {
-			t.error(`unexpected error at ${i} for '${test.val}': ${e}`);
+			t.error(`unexpected encoding error at ${i} for '${test.val}': ${e}`);
 		}
 	}
 
@@ -726,7 +726,7 @@ function runTests(t: T): void {
 				t.error(`unexpected decoding at ${i} for '${fmtBuf(bin)}': ${val}, expected ${test.val}`);
 			}
 		} catch(e) {
-			t.error(`unexpected error at ${i} for '${fmtBuf(bin)}': ${e}`);
+			t.error(`unexpected decoding error at ${i} for '${fmtBuf(bin)}': ${e}`);
 		}
 	}
 }

@@ -10,16 +10,23 @@ import {
 
 
 
-export interface Type {
-	enc(buf: WriteBuffer, v?: any): void;
-	dec(buf: ReadBuffer): any;
+export interface Type<T> {
+	enc(buf: WriteBuffer, v: T): void;
+	dec(buf: ReadBuffer): T;
 }
+
+export interface Collection<T> extends Type<T> {
+	encHeader(buf: WriteBuffer, len: number): void;
+	decHeader(buf: ReadBuffer): number;
+}
+
+export type Obj<T> = {[key: number]: T} | {[key: string]: T};
 
 
 
 export const Any = {
 	enc(buf: WriteBuffer, v: any): void {
-		let typ: Type;
+		let typ: Type<any>;
 		switch(typeof v) {
 		case "undefined":
 			typ = Nil;
@@ -49,7 +56,7 @@ export const Any = {
 
 	dec(buf: ReadBuffer): any {
 		const tag = buf.peek();
-		let typ: Type;
+		let typ: Type<any>;
 		switch(tag) {
 		case Tag.Nil:
 			typ = Nil;
@@ -302,24 +309,31 @@ export const Str = {
 
 export const Arr = TypedArr(Any);
 
-export function TypedArr(valueT: Type): Type {
+export function TypedArr<T>(valueT: Type<T>): Collection<T[]> {
 	return {
-		enc<T extends Type>(buf: WriteBuffer, v: T[]): void {
-			if(v.length < 16) {
-				buf.putUi8(fixarrayTag(v.length));
+		encHeader(buf: WriteBuffer, len: number): void {
+			if(len < 16) {
+				buf.putUi8(fixarrayTag(len));
 			} else {
-				putCollectionHeader(buf, Tag.Array16, v.length);
+				putCollectionHeader(buf, Tag.Array16, len);
 			}
+		},
+
+		enc(buf: WriteBuffer, v: T[]): void {
+			this.encHeader(buf, v.length);
 			v.forEach(x => valueT.enc(buf, x));
 		},
 
-		dec(buf: ReadBuffer): any[] {
+		decHeader(buf: ReadBuffer): number {
 			const tag = buf.getUi8();
-			let n = isFixarrayTag(tag)
+			return isFixarrayTag(tag)
 				? readFixarray(tag)
 				: getCollectionHeader(buf, tag, Tag.Array16);
+		},
 
+		dec(buf: ReadBuffer): T[] {
 			const res = [];
+			let n = this.decHeader(buf);
 			while(n-- > 0) {
 				res.push(valueT.dec(buf));
 			}
@@ -329,35 +343,41 @@ export function TypedArr(valueT: Type): Type {
 }
 
 
-export const Map = TypedMap(Str, Any);
+export const Map = TypedMap(Any, Any);
 
-export function TypedMap(keyT: Type, valueT: Type): Type {
+export function TypedMap<V>(keyT: Type<number|string>, valueT: Type<V>): Collection<Obj<V>> {
 	return {
-		enc(buf: WriteBuffer, v: any): void {
+		encHeader(buf: WriteBuffer, len: number): void {
+			if(len < 16) {
+				buf.putUi8(fixmapTag(len));
+			} else {
+				putCollectionHeader(buf, Tag.Map16, len);
+			}
+		},
+
+		enc(buf: WriteBuffer, v: Obj<V>): void {
 			const props = [];
 			for(const p in v) {
 				props.push(p);
 			}
 
-			if(props.length < 16) {
-				buf.putUi8(fixmapTag(props.length));
-			} else {
-				putCollectionHeader(buf, Tag.Map16, props.length);
-			}
-
+			this.encHeader(buf, props.length);
 			props.forEach(p => {
 				keyT.enc(buf, p);
 				valueT.enc(buf, v[p]);
 			});
 		},
 
-		dec(buf: ReadBuffer): any {
+		decHeader(buf: ReadBuffer): number {
 			const tag = buf.getUi8();
-			let n = isFixmapTag(tag)
+			return isFixmapTag(tag)
 				? readFixmap(tag)
 				: getCollectionHeader(buf, tag, Tag.Map16);
+		},
 
+		dec(buf: ReadBuffer): Obj<V> {
 			const res = {};
+			let n = this.decHeader(buf);
 			while(n-- > 0) {
 				const k = keyT.dec(buf);
 				res[k] = valueT.dec(buf);

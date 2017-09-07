@@ -4,14 +4,14 @@ msgpack-js is a [MessagePack](http://msgpack.org/) implementation for Javascript
 ## Encoding
 To encode objects into the binary MessagePack format, an `encode` function is provided:
 ```typescript
-function encode(v: any, typ?: Type): Uint8Array;
+function encode<T>(v: T, typ?: Type<T>): Uint8Array;
 ```
 This function takes an object of an arbitrary type and converts it to its binary representation. If the type of the object is known in advance, an optional `typ` parameter could be passed to indicate the encoding algorithm. For an automatic type detection this parameter could be omitted.
 
 ## Decoding
 To decode binary MessagePack data into objects, a `decode` function is provided:
 ```typescript
-function decode(buf: BufferSource, typ?: Type): any;
+function decode<T>(buf: BufferSource, typ?: Type<T>): T;
 ```
 This function takes a buffer containing the binary data and converts it to an object. The buffer could either be an `ArrayBuffer` or an `ArrayBufferView` and should contain valid MessagePack data. If a certain type is expected, an optional `typ` parameter could be passed. For automatic detection from the buffer's content this parameter could be omitted.
 
