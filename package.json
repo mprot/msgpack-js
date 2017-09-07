@@ -6,8 +6,8 @@
   "module": "dist/messagepack.es.js",
   "jsnext:main": "dist/messagepack.es.js",
   "files": [
-	  "dist",
-	  "README.md"
+    "dist",
+    "README.md"
   ],
   "keywords": [
     "msgpack",
@@ -29,9 +29,9 @@
     "url": "git+https://github.com/tsne/msgpack-js.git"
   },
   "devDependencies": {
-    "@types/node": "^8.0.26",
+    "@types/node": "^8.0.27",
     "rollup": "^0.49.2",
-    "rollup-plugin-tsc": "^1.0.5"
+    "rollup-plugin-tsc": "^1.1.0"
   },
   "dependencies": {}
 }

@@ -12,6 +12,7 @@ export default {
 		require("rollup-plugin-tsc")({
 			compilerOptions: {
 				noUnusedLocals: true,
+				declaration: true,
 			},
 		}),
 	],
