@@ -324,11 +324,15 @@ export function TypedArr<T>(valueT: Type<T>): Collection<T[]> {
 			v.forEach(x => valueT.enc(buf, x));
 		},
 
-		decHeader(buf: ReadBuffer): number {
+		decHeader(buf: ReadBuffer, expect?: number): number {
 			const tag = buf.getUi8();
-			return isFixarrayTag(tag)
+			const n = isFixarrayTag(tag)
 				? readFixarray(tag)
 				: getCollectionHeader(buf, tag, Tag.Array16);
+			if(expect && n !== expect) {
+				throw new Error(`invalid array header size ${n}`);
+			}
+			return n;
 		},
 
 		dec(buf: ReadBuffer): T[] {
