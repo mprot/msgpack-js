@@ -46,6 +46,7 @@ export const Any = {
 			typ = v === null ? Nil
 				: Array.isArray(v) ? Arr
 				: v instanceof Uint8Array || v instanceof ArrayBuffer ? Bytes
+				: v instanceof Date ? Time
 				: Map;
 			break;
 		default:
@@ -106,6 +107,12 @@ export const Any = {
 		case Tag.Map16:
 		case Tag.Map32:
 			typ = Map;
+			break;
+
+		case Tag.FixExt4:
+		case Tag.FixExt8:
+		case Tag.Ext8:
+			typ = Time;
 			break;
 
 		default:
@@ -329,7 +336,7 @@ export function TypedArr<T>(valueT: Type<T>): Collection<T[]> {
 			const n = isFixarrayTag(tag)
 				? readFixarray(tag)
 				: getCollectionHeader(buf, tag, Tag.Array16);
-			if(expect && n !== expect) {
+			if(expect != null && n !== expect) {
 				throw new Error(`invalid array header size ${n}`);
 			}
 			return n;
@@ -390,6 +397,46 @@ export function TypedMap<V>(keyT: Type<number|string>, valueT: Type<V>): Collect
 		},
 	};
 }
+
+
+export const Time = {
+	enc(buf: WriteBuffer, v: Date): void {
+		const ms = v.getTime();
+		buf.putUi8(Tag.Ext8);
+		buf.putUi8(12);
+		buf.putI8(-1);
+		buf.putUi32((ms%1000)*1000000);
+		buf.putI64(ms/1000);
+	},
+
+	dec(buf: ReadBuffer): Date {
+		const tag = buf.getUi8();
+		switch(tag) {
+		case Tag.FixExt4: // 32-bit seconds
+			if(buf.getI8() === -1) {
+				return new Date(buf.getUi32() * 1000);
+			}
+			break;
+		case Tag.FixExt8: // 34-bit seconds + 30-bit nanoseconds
+			if(buf.getI8() === -1) {
+				const lo = buf.getUi32();
+				const hi = buf.getUi32();
+				// seconds: hi + (lo&0x3)*0x100000000
+				// nanoseconds: lo>>2 == lo/4
+				return new Date((hi + (lo&0x3)*0x100000000)*1000 + lo/4000000);
+			}
+			break;
+		case Tag.Ext8: // 64-bit seconds + 32-bit nanoseconds
+			if(buf.getUi8() === 12 && buf.getI8() === -1) {
+				const ns = buf.getUi32();
+				const s = buf.getI64();
+				return new Date(s*1000 + ns/1000000);
+			}
+			break;
+		}
+		typeError(tag, "time");
+	},
+};
 
 
 

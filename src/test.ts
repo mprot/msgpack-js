@@ -1,12 +1,12 @@
 import * as process from "process";
 import {Tag, posFixintTag, negFixintTag, fixstrTag, fixarrayTag, fixmapTag} from "./tags";
-import {Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, Map, Any} from "./types";
+import {Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, Map, Time, Any} from "./types";
 import {encode, decode} from "./index";
 
 
 
 function runTests(t: T): void {
-	// decode
+	// encode
 	const encodeTests = [
 		// nil
 		{
@@ -217,6 +217,17 @@ function runTests(t: T): void {
 			typ: Map,
 			bin: [fixmapTag(2), fixstrTag(1), 0x61, posFixintTag(7), fixstrTag(1), 0x62, posFixintTag(13)],
 		},
+		// time
+		{
+			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15)),
+			typ: Time,
+			bin: [Tag.Ext8, 12, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0xca, 0x52, 0xa7],
+		},
+		{
+			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15, 16)),
+			typ: Time,
+			bin: [Tag.Ext8, 12, 0xff, 0x00, 0xf4, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0xca, 0x52, 0xa7],
+		},
 		// any
 		{
 			val: undefined,
@@ -277,6 +288,11 @@ function runTests(t: T): void {
 			val: {},
 			typ: Any,
 			bin: [fixmapTag(0)],
+		},
+		{
+			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15, 16)),
+			typ: Any,
+			bin: [Tag.Ext8, 12, 0xff, 0x00, 0xf4, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0xca, 0x52, 0xa7],
 		},
 	];
 
@@ -565,6 +581,25 @@ function runTests(t: T): void {
 			val: {"inf": "∞"},
 			eq: objectEqual,
 		},
+		// time
+		{
+			bin: [Tag.FixExt4, 0xff, 0x59, 0xca, 0x52, 0xa7],
+			typ: Time,
+			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15)),
+			eq: dateEqual,
+		},
+		{
+			bin: [Tag.FixExt8, 0xff, 0x03, 0xd0, 0x90, 0x00, 0x59, 0xca, 0x52, 0xa7],
+			typ: Time,
+			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15, 16)),
+			eq: dateEqual,
+		},
+		{
+			bin: [Tag.Ext8, 12, 0xff, 0x00, 0xf4, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0xca, 0x52, 0xa7],
+			typ: Time,
+			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15, 16)),
+			eq: dateEqual,
+		},
 		// any
 		{
 			bin: [Tag.Nil],
@@ -715,6 +750,24 @@ function runTests(t: T): void {
 			val: {"10": "2"},
 			eq: objectEqual,
 		},
+		{
+			bin: [Tag.FixExt4, 0xff, 0x59, 0xca, 0x52, 0xa7],
+			typ: Any,
+			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15)),
+			eq: dateEqual,
+		},
+		{
+			bin: [Tag.FixExt8, 0xff, 0x03, 0xd0, 0x90, 0x00, 0x59, 0xca, 0x52, 0xa7],
+			typ: Any,
+			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15, 16)),
+			eq: dateEqual,
+		},
+		{
+			bin: [Tag.Ext8, 12, 0xff, 0x00, 0xf4, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0xca, 0x52, 0xa7],
+			typ: Any,
+			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15, 16)),
+			eq: dateEqual,
+		},
 	];
 	for(let i = 0; i < decodeTests.length; ++i) {
 		const test = decodeTests[i];
@@ -818,6 +871,10 @@ function bufEqual(left: Uint8Array, right: Uint8Array): boolean {
 		}
 	}
 	return true;
+}
+
+function dateEqual(left: Date, right: Date): boolean {
+	return left.getTime() === right.getTime();
 }
 
 

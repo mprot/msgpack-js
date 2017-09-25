@@ -40,7 +40,8 @@ The following types are supported:
 * `Bytes` for binary data,
 * `Str` for string values,
 * `Arr` for arrays,
-* `Map` for objects, and
+* `Map` for objects,
+* `Time` for date and time values, and
 * `Any` for automatically detecting the type and forward it to one of the types above.
 
 The `Arr` and `Map` types provide generic encoding and decoding for their elements, i.e. `Arr` and `Map` essentially equal `Any[]` and `Map<Str, Any>` respectively. If more stringent element types are required, the `TypedArr` and `TypedMap` functions could be used instead:

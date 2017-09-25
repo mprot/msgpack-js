@@ -1,11 +1,11 @@
-import {Type, Obj, Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, TypedArr, Map, TypedMap, Any} from "./types";
+import {Type, Obj, Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, TypedArr, Map, TypedMap, Time, Any} from "./types";
 import {WriteBuffer, ReadBuffer, createWriteBuffer, createReadBuffer} from "./buffer";
 
 
 export {
 	WriteBuffer, ReadBuffer,
 	Type, Obj,
-	Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, TypedArr, Map, TypedMap, Any,
+	Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, TypedArr, Map, TypedMap, Time, Any,
 	encode, decode,
 };
 
