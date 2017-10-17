@@ -1,3 +1,4 @@
+const path = require("path");
 const pkg = require("./package.json");
 
 
@@ -13,6 +14,7 @@ export default {
 			compilerOptions: {
 				noUnusedLocals: true,
 				declaration: true,
+				declarationDir: path.dirname(pkg["types"]),
 			},
 		}),
 	],
