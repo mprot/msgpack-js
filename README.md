@@ -1,5 +1,5 @@
 # msgpack-js
-msgpack-js is a [MessagePack](http://msgpack.org/) implementation for Javascript and Typescript.
+`msgpack-js` is a [MessagePack](http://msgpack.org/) implementation for JavaScript and TypeScript.
 
 ## Encoding
 To encode objects into the binary MessagePack format, an `encode` function is provided:
@@ -29,7 +29,7 @@ console.log(str);
 ```
 
 ## Types
-Sometimes even a Javascript developer wants to have a little bit more type safety. In this situation specific types could be passed to the `encode` and `decode` functions. If the object or the binary data has an incompatible type, an error will be thrown.
+Sometimes even a JavaScript developer wants to have a little bit more type safety. In this situation specific types could be passed to the `encode` and `decode` functions. If the object or the binary data has an incompatible type, an error will be thrown.
 
 The following types are supported:
 * `Nil` for null values,
