@@ -22,12 +22,12 @@
     "test": "rollup -c rollup.test.js && node build/test.js",
     "prepublishOnly": "npm run build"
   },
-  "author": "tsne",
+  "author": "mprot",
   "license": "MIT",
-  "homepage": "https://github.com/tsne/msgpack-js",
+  "homepage": "https://github.com/mprot/msgpack-js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tsne/msgpack-js.git"
+    "url": "git+https://github.com/mprot/msgpack-js.git"
   },
   "devDependencies": {
     "@types/node": "^8.0.45",
