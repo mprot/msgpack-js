@@ -2,12 +2,14 @@ const pkg = require("./package.json");
 
 
 export default {
-	input: "src/test.ts",
-	output: {file: "build/test.js", format: "cjs"},
+	input: "src/tests.ts",
+	output: {
+		file: "build/tests.js",
+		format: "cjs",
+	},
 	external: [
-		"process",
+		"testsome",
 	],
-	sourcemap: true,
 	plugins: [
 		require("rollup-plugin-tsc")({
 			compilerOptions: {

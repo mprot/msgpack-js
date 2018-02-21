@@ -1,13 +1,12 @@
-import * as process from "process";
+import {test} from "testsome";
 import {Tag, posFixintTag, negFixintTag, fixstrTag, fixarrayTag, fixmapTag} from "./tags";
-import {Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, Map, Time, Any} from "./types";
+import {Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, Map, Time, Any, Struct, Union} from "./types";
 import {encode, decode} from "./index";
 
 
 
-function runTests(t: T): void {
-	// encode
-	const encodeTests = [
+test("encode", t => {
+	const tests = [
 		// nil
 		{
 			val: undefined,
@@ -145,17 +144,17 @@ function runTests(t: T): void {
 		},
 		// bytes
 		{
-			val: new Uint8Array(repeat(0x30, 1)),
+			val: (new Uint8Array(repeat(0x30, 1))).buffer,
 			typ: Bytes,
 			bin: [Tag.Bin8, 0x1].concat(repeat(0x30, 1)),
 		},
 		{
-			val: new Uint8Array(repeat(0x30, 256)),
+			val: (new Uint8Array(repeat(0x30, 256))).buffer,
 			typ: Bytes,
 			bin: [Tag.Bin16, 0x01, 0x00].concat(repeat(0x30, 256)),
 		},
 		{
-			val: new Uint8Array(repeat(0x30, 65536)),
+			val: (new Uint8Array(repeat(0x30, 65536))).buffer,
 			typ: Bytes,
 			bin: [Tag.Bin32, 0x00, 0x01, 0x00, 0x00].concat(repeat(0x30, 65536)),
 		},
@@ -294,10 +293,41 @@ function runTests(t: T): void {
 			typ: Any,
 			bin: [Tag.Ext8, 12, 0xff, 0x00, 0xf4, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0xca, 0x52, 0xa7],
 		},
+		// struct
+		{
+			val: {
+				foo: 7,
+				bar: "7",
+			},
+			typ: Struct({
+				1: ["foo", Int],
+				3: ["bar", Str],
+			}),
+			bin: [fixmapTag(2), posFixintTag(1), posFixintTag(7), posFixintTag(3), fixstrTag(1), 0x37],
+		},
+		// union
+		{
+			val: 7,
+			typ: Union({
+				4: Int,
+				6: Str,
+				ordinalOf(v: any): number { return 4; },
+			}),
+			bin: [fixarrayTag(2), posFixintTag(4), posFixintTag(7)],
+		},
+		{
+			val: "7",
+			typ: Union({
+				13: Str,
+				14: Int,
+				ordinalOf(v: any): number { return 13; },
+			}),
+			bin: [fixarrayTag(2), posFixintTag(13), fixstrTag(1), 0x37],
+		},
 	];
 
-	for(let i = 0; i < encodeTests.length; ++i) {
-		const test = encodeTests[i];
+	for(let i = 0; i < tests.length; ++i) {
+		const test = tests[i];
 		try {
 			const bin = encode(test.val, test.typ);
 			const expected = new Uint8Array(test.bin);
@@ -308,10 +338,10 @@ function runTests(t: T): void {
 			t.error(`unexpected encoding error at ${i} for '${test.val}': ${e}`);
 		}
 	}
+});
 
-
-	// decode
-	const decodeTests = [
+test("decode", t => {
+	const tests = [
 		// nil
 		{
 			bin: [Tag.Nil],
@@ -768,9 +798,42 @@ function runTests(t: T): void {
 			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15, 16)),
 			eq: dateEqual,
 		},
+		// struct
+		{
+			bin: [fixmapTag(2), posFixintTag(1), posFixintTag(7), posFixintTag(3), fixstrTag(1), 0x37],
+			typ: Struct({
+				1: ["foo", Int],
+				3: ["bar", Str],
+			}),
+			val: {
+				foo: 7,
+				bar: "7",
+			},
+			eq: objectEqual,
+		},
+		// union
+		{
+			bin: [fixarrayTag(2), posFixintTag(4), posFixintTag(7)],
+			typ: Union({
+				4: Int,
+				6: Str,
+				ordinalOf(v: any): number { throw new Error("not implemented"); },
+			}),
+			val: 7,
+		},
+		{
+			bin: [fixarrayTag(2), posFixintTag(13), fixstrTag(1), 0x37],
+			typ: Union({
+				13: Str,
+				14: Int,
+				ordinalOf(v: any): number { throw new Error("not implemented"); },
+			}),
+			val: "7",
+		},
 	];
-	for(let i = 0; i < decodeTests.length; ++i) {
-		const test = decodeTests[i];
+
+	for(let i = 0; i < tests.length; ++i) {
+		const test = tests[i];
 		const bin = new Uint8Array(test.bin);
 		try {
 			const val = decode(bin, test.typ);
@@ -782,35 +845,7 @@ function runTests(t: T): void {
 			t.error(`unexpected decoding error at ${i} for '${fmtBuf(bin)}': ${e}`);
 		}
 	}
-}
-
-
-
-class T {
-	private _errs: string[];
-
-
-	public constructor() {
-		this._errs = [];
-	}
-
-	public error(msg: string): void {
-		this._errs.push(msg);
-	}
-
-	public failed(): boolean {
-		return this._errs.length !== 0;
-	}
-
-	public report(): boolean {
-		if(this._errs.length === 0) {
-			console.log("> PASSED");
-			return true;
-		}
-		console.error(this._errs.reduce((msg, err) => `${msg}\n    ${err}`, "> FAILED"));
-		return false;
-	}
-}
+});
 
 
 
@@ -875,16 +910,4 @@ function bufEqual(left: Uint8Array, right: Uint8Array): boolean {
 
 function dateEqual(left: Date, right: Date): boolean {
 	return left.getTime() === right.getTime();
-}
-
-
-
-
-
-
-console.log("RUN TESTS...");
-const t = new T();
-runTests(t);
-if(!t.report()) {
-	process.exit(1);
 }

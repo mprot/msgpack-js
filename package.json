@@ -19,7 +19,7 @@
     "prebuild": "rm -rf dist/*",
     "build": "rollup -c rollup.lib.js",
     "pretest": "rm -rf build/*",
-    "test": "rollup -c rollup.test.js && node build/test.js",
+    "test": "rollup -c rollup.test.js && testsome build/tests.js",
     "prepublishOnly": "npm run build"
   },
   "author": "mprot",
@@ -30,9 +30,10 @@
     "url": "git+https://github.com/mprot/msgpack-js.git"
   },
   "devDependencies": {
-    "@types/node": "^8.0.45",
-    "rollup": "^0.50.0",
-    "rollup-plugin-tsc": "^1.1.4"
+    "@types/node": "^9.4.6",
+    "rollup": "^0.56.2",
+    "rollup-plugin-tsc": "^1.1.6",
+    "testsome": "^1.0.0"
   },
   "dependencies": {}
 }

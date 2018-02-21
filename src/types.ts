@@ -1,11 +1,15 @@
-import {WriteBuffer, ReadBuffer} from "./buffer";
+import {typeError} from "./error";
+import {
+	WriteBuffer, ReadBuffer,
+	putBlob, getBlob,
+	putArrHeader, getArrHeader,
+	putMapHeader, getMapHeader,
+} from "./buffer";
 import {
 	Tag,
 	posFixintTag, isPosFixintTag, readPosFixint,
 	negFixintTag, isNegFixintTag, readNegFixint,
-	fixstrTag, isFixstrTag, readFixstr,
-	fixarrayTag, isFixarrayTag, readFixarray,
-	fixmapTag, isFixmapTag, readFixmap,
+	fixstrTag, isFixstrTag, isFixarrayTag, isFixmapTag,
 } from "./tags";
 
 
@@ -17,129 +21,38 @@ export interface Type<T> {
 
 export interface Collection<T> extends Type<T> {
 	encHeader(buf: WriteBuffer, len: number): void;
-	decHeader(buf: ReadBuffer): number;
+	decHeader(buf: ReadBuffer, expect?: number): number;
 }
 
-export type Obj<T> = {[key: number]: T} | {[key: string]: T};
+export type Obj<T> = {[key: string]: T};
+
+export type Field = [string, Type<any>]; // (name, type)
+export type Fields = {readonly [ordinal: number]: Field};
+
+export interface Branches {
+	readonly [ordinal: number]: Type<any>;
+	ordinalOf(v: any): number;
+};
 
 
 
-export const Any = {
+export const Any: Type<any> = {
 	enc(buf: WriteBuffer, v: any): void {
-		let typ: Type<any>;
-		switch(typeof v) {
-		case "undefined":
-			typ = Nil;
-			break;
-		case "boolean":
-			typ = Bool;
-			break;
-		case "number":
-			typ = !isFinite(v) || Math.floor(v) !== v ? Float
-				: v < 0 ? Int
-				: Uint;
-			break;
-		case "string":
-			typ = Str;
-			break;
-		case "object":
-			typ = v === null ? Nil
-				: Array.isArray(v) ? Arr
-				: v instanceof Uint8Array || v instanceof ArrayBuffer ? Bytes
-				: v instanceof Date ? Time
-				: Map;
-			break;
-		default:
-			throw new TypeError(`unsupported type ${typeof v}`);
-		}
-		typ.enc(buf, v);
+		typeOf(v).enc(buf, v);
 	},
 
 	dec(buf: ReadBuffer): any {
-		const tag = buf.peek();
-		let typ: Type<any>;
-		switch(tag) {
-		case Tag.Nil:
-			typ = Nil;
-			break;
-
-		case Tag.False:
-		case Tag.True:
-			typ = Bool;
-			break;
-
-		case Tag.Int8:
-		case Tag.Int16:
-		case Tag.Int32:
-		case Tag.Int64:
-			typ = Int;
-			break;
-
-		case Tag.Uint8:
-		case Tag.Uint16:
-		case Tag.Uint32:
-		case Tag.Uint64:
-			typ = Uint;
-			break;
-
-		case Tag.Float32:
-		case Tag.Float64:
-			typ = Float;
-			break;
-
-		case Tag.Bin8:
-		case Tag.Bin16:
-		case Tag.Bin32:
-			typ = Bytes;
-			break;
-
-		case Tag.Str8:
-		case Tag.Str16:
-		case Tag.Str32:
-			typ = Str;
-			break;
-
-		case Tag.Array16:
-		case Tag.Array32:
-			typ = Arr;
-			break;
-
-		case Tag.Map16:
-		case Tag.Map32:
-			typ = Map;
-			break;
-
-		case Tag.FixExt4:
-		case Tag.FixExt8:
-		case Tag.Ext8:
-			typ = Time;
-			break;
-
-		default:
-			if(isPosFixintTag(tag) || isNegFixintTag(tag)) {
-				typ = Int;
-			} else if(isFixstrTag(tag)) {
-				typ = Str;
-			} else if(isFixarrayTag(tag)) {
-				typ = Arr;
-			} else if(isFixmapTag(tag)) {
-				typ = Map;
-			} else {
-				throw new TypeError(`unsupported tag ${tag}`);
-			}
-		}
-
-		return typ.dec(buf);
+		return tagType(buf.peek()).dec(buf);
 	},
 };
 
 
-export const Nil = {
-	enc(buf: WriteBuffer): void {
+export const Nil: Type<null> = {
+	enc(buf: WriteBuffer, v: null): void {
 		buf.putUi8(Tag.Nil);
 	},
 
-	dec(buf: ReadBuffer): any {
+	dec(buf: ReadBuffer): null {
 		const tag = buf.getUi8();
 		if(tag !== Tag.Nil) {
 			typeError(tag, "nil");
@@ -149,7 +62,7 @@ export const Nil = {
 };
 
 
-export const Bool = {
+export const Bool: Type<boolean> = {
 	enc(buf: WriteBuffer, v: boolean): void {
 		buf.putUi8(v ? Tag.True : Tag.False);
 	},
@@ -169,7 +82,7 @@ export const Bool = {
 };
 
 
-export const Int = {
+export const Int: Type<number> = {
 	enc(buf: WriteBuffer, v: number): void {
 		if(-128 <= v && v <= 127) {
 			if(v >= 0) {
@@ -231,7 +144,7 @@ export const Int = {
 };
 
 
-export const Uint = {
+export const Uint: Type<number> = {
 	enc(buf: WriteBuffer, v: number): void {
 		if(v < 0) {
 			throw new Error(`not an unsigned integer: ${v}`);
@@ -262,7 +175,7 @@ export const Uint = {
 };
 
 
-export const Float = {
+export const Float: Type<number> = {
 	enc(buf: WriteBuffer, v: number): void {
 		buf.putUi8(Tag.Float64);
 		buf.putF(v);
@@ -284,122 +197,33 @@ export const Float = {
 };
 
 
-export const Bytes = {
+export const Bytes: Type<ArrayBuffer> = {
 	enc(buf: WriteBuffer, v: ArrayBuffer): void {
-		putBlobHeader(buf, Tag.Bin8, v.byteLength);
-		buf.put(v);
+		putBlob(buf, v, Tag.Bin8);
 	},
 
-	dec(buf: ReadBuffer): ArrayBuffer {
-		return buf.get(getBlobHeader(buf));
-	},
+	dec: getBlob,
 };
 
 
-export const Str = {
+export const Str: Type<string> = {
 	enc(buf: WriteBuffer, v: string): void {
 		const utf8 = toUTF8(v);
-		if(utf8.length < 32) {
-			buf.putUi8(fixstrTag(utf8.length));
+		if(utf8.byteLength < 32) {
+			buf.putUi8(fixstrTag(utf8.byteLength));
+			buf.put(utf8);
 		} else {
-			putBlobHeader(buf, Tag.Str8, utf8.length);
+			putBlob(buf, utf8, Tag.Str8);
 		}
-		buf.put(utf8);
 	},
 
 	dec(buf: ReadBuffer): string {
-		const utf8 = buf.get(getBlobHeader(buf));
-		return fromUTF8(utf8);
+		return fromUTF8(getBlob(buf));
 	},
 };
 
 
-export const Arr = TypedArr(Any);
-
-export function TypedArr<T>(valueT: Type<T>): Collection<T[]> {
-	return {
-		encHeader(buf: WriteBuffer, len: number): void {
-			if(len < 16) {
-				buf.putUi8(fixarrayTag(len));
-			} else {
-				putCollectionHeader(buf, Tag.Array16, len);
-			}
-		},
-
-		enc(buf: WriteBuffer, v: T[]): void {
-			this.encHeader(buf, v.length);
-			v.forEach(x => valueT.enc(buf, x));
-		},
-
-		decHeader(buf: ReadBuffer, expect?: number): number {
-			const tag = buf.getUi8();
-			const n = isFixarrayTag(tag)
-				? readFixarray(tag)
-				: getCollectionHeader(buf, tag, Tag.Array16);
-			if(expect != null && n !== expect) {
-				throw new Error(`invalid array header size ${n}`);
-			}
-			return n;
-		},
-
-		dec(buf: ReadBuffer): T[] {
-			const res = [];
-			let n = this.decHeader(buf);
-			while(n-- > 0) {
-				res.push(valueT.dec(buf));
-			}
-			return res;
-		},
-	};
-}
-
-
-export const Map = TypedMap(Any, Any);
-
-export function TypedMap<V>(keyT: Type<number|string>, valueT: Type<V>): Collection<Obj<V>> {
-	return {
-		encHeader(buf: WriteBuffer, len: number): void {
-			if(len < 16) {
-				buf.putUi8(fixmapTag(len));
-			} else {
-				putCollectionHeader(buf, Tag.Map16, len);
-			}
-		},
-
-		enc(buf: WriteBuffer, v: Obj<V>): void {
-			const props = [];
-			for(const p in v) {
-				props.push(p);
-			}
-
-			this.encHeader(buf, props.length);
-			props.forEach(p => {
-				keyT.enc(buf, p);
-				valueT.enc(buf, v[p]);
-			});
-		},
-
-		decHeader(buf: ReadBuffer): number {
-			const tag = buf.getUi8();
-			return isFixmapTag(tag)
-				? readFixmap(tag)
-				: getCollectionHeader(buf, tag, Tag.Map16);
-		},
-
-		dec(buf: ReadBuffer): Obj<V> {
-			const res = {};
-			let n = this.decHeader(buf);
-			while(n-- > 0) {
-				const k = keyT.dec(buf);
-				res[k] = valueT.dec(buf);
-			}
-			return res;
-		},
-	};
-}
-
-
-export const Time = {
+export const Time: Type<Date> = {
 	enc(buf: WriteBuffer, v: Date): void {
 		const ms = v.getTime();
 		buf.putUi8(Tag.Ext8);
@@ -439,72 +263,112 @@ export const Time = {
 };
 
 
+export const Arr = TypedArr(Any);
+export const Map = TypedMap(Any, Any);
 
-function putBlobHeader(buf: WriteBuffer, baseTag: Tag, n: number): void {
-	if(n <= 255) {
-		buf.putUi8(baseTag);
-		buf.putUi8(n);
-	} else if(n <= 65535) {
-		buf.putUi8(baseTag + 1);
-		buf.putUi16(n);
-	} else if(n <= 4294967295) {
-		buf.putUi8(baseTag + 2);
-		buf.putUi32(n);
-	} else {
-		throw new RangeError("length limit exceeded");
-	}
-}
 
-function getBlobHeader(buf: ReadBuffer): number {
-	const tag = buf.getUi8();
-	switch(tag) {
-	case Tag.Nil:
-		return 0;
-	case Tag.Bin8:
-	case Tag.Str8:
-		return buf.getUi8();
-	case Tag.Bin16:
-	case Tag.Str16:
-		return buf.getUi16();
-	case Tag.Bin32:
-	case Tag.Str32:
-		return buf.getUi32();
-	}
+export function TypedArr<T>(valueT: Type<T>): Collection<T[]> {
+	return {
+		encHeader: putArrHeader,
+		decHeader: getArrHeader,
 
-	if(!isFixstrTag(tag)) {
-		typeError(tag, "bytes or string");
-	}
-	return readFixstr(tag);
+		enc(buf: WriteBuffer, v: T[]): void {
+			putArrHeader(buf, v.length);
+			v.forEach(x => valueT.enc(buf, x));
+		},
+
+		dec(buf: ReadBuffer): T[] {
+			const res = [];
+			let n = getArrHeader(buf);
+			while(n-- > 0) {
+				res.push(valueT.dec(buf));
+			}
+			return res;
+		},
+	};
 }
 
 
-function putCollectionHeader(buf: WriteBuffer, baseTag: Tag, n: number): void {
-	if(n <= 65535) {
-		buf.putUi8(baseTag);
-		buf.putUi16(n);
-	} else if(n <= 4294967295) {
-		buf.putUi8(baseTag + 1);
-		buf.putUi32(n);
-	} else {
-		throw new RangeError("length limit exceeded");
-	}
+export function TypedMap<V>(keyT: Type<number|string>, valueT: Type<V>): Collection<Obj<V>> {
+	return {
+		encHeader: putMapHeader,
+		decHeader: getMapHeader,
+
+		enc(buf: WriteBuffer, v: Obj<V>): void {
+			const props = Object.keys(v);
+			putMapHeader(buf, props.length);
+			props.forEach(p => {
+				keyT.enc(buf, p);
+				valueT.enc(buf, v[p]);
+			});
+		},
+
+		dec(buf: ReadBuffer): Obj<V> {
+			const res = {};
+			let n = getMapHeader(buf);
+			while(n-- > 0) {
+				const k = keyT.dec(buf);
+				res[k] = valueT.dec(buf);
+			}
+			return res;
+		},
+	};
 }
 
-function getCollectionHeader(buf: ReadBuffer, tag: Tag, baseTag: Tag): number {
-	switch(tag) {
-	case Tag.Nil:
-		return 0;
-	case baseTag: // 16 bit
-		return buf.getUi16();
-	case baseTag + 1: // 32 bit
-		return buf.getUi32();
-	default:
-		typeError(tag, "array or map");
-	}
+
+export function Struct(fields: Fields): Type<Obj<any>> {
+	const ordinals = Object.keys(fields);
+
+	return {
+		enc(buf: WriteBuffer, v: any) {
+			putMapHeader(buf, ordinals.length);
+			ordinals.forEach(ord => {
+				const f = fields[ord];
+				Int.enc(buf, Number(ord));
+				f[1].enc(buf, v[f[0]]);
+			});
+		},
+
+		dec(buf: ReadBuffer): any {
+			const res = {};
+			for(let n = getMapHeader(buf); n > 0; --n) {
+				const f = fields[Int.dec(buf)];
+				if(f) {
+					res[f[0]] = f[1].dec(buf);
+				} else {
+					Any.dec(buf);
+				}
+			}
+			return res;
+		},
+	};
 }
 
 
-function toUTF8(v: string): Uint8Array {
+export function Union(branches: Branches): Type<any> {
+	return {
+		enc(buf: WriteBuffer, v: any) {
+			putArrHeader(buf, 2);
+
+			const ord = branches.ordinalOf(v);
+			Int.enc(buf, ord);
+			branches[ord].enc(buf, v);
+		},
+
+		dec(buf: ReadBuffer): any {
+			getArrHeader(buf, 2);
+
+			const t = branches[Int.dec(buf)];
+			if(!t) {
+				throw new TypeError("invalid union type");
+			}
+			return t.dec(buf);
+		},
+	};
+}
+
+
+function toUTF8(v: string): ArrayBuffer {
 	const n = v.length;
 	const bin = new Uint8Array(4*n);
 
@@ -533,7 +397,7 @@ function toUTF8(v: string): Uint8Array {
 			bin[pos++] = 0x80 + (c & 0x3f);
 		}
 	}
-	return bin.subarray(0, pos);
+	return bin.buffer.slice(0, pos);
 }
 
 function fromUTF8(buf: ArrayBuffer): string {
@@ -562,7 +426,80 @@ function fromUTF8(buf: ArrayBuffer): string {
 	return String.fromCodePoint.apply(null, codepoints);
 }
 
+function typeOf(v: any): Type<any> {
+	switch(typeof v) {
+	case "undefined":
+		return Nil;
+	case "boolean":
+		return Bool;
+	case "number":
+		return !isFinite(v) || Math.floor(v) !== v ? Float
+			: v < 0 ? Int
+			: Uint;
+	case "string":
+		return Str;
+	case "object":
+		return v === null ? Nil
+			: Array.isArray(v) ? Arr
+			: v instanceof Uint8Array || v instanceof ArrayBuffer ? Bytes
+			: v instanceof Date ? Time
+			: Map;
+	default:
+		throw new TypeError(`unsupported type ${typeof v}`);
+	}
+}
 
-function typeError(tag: Tag, expected: string): never {
-	throw new TypeError(`unexpected tag 0x${tag.toString(16)} (${expected} expected)`);
+function tagType(tag: Tag): Type<any> {
+	switch(tag) {
+	case Tag.Nil:
+		return Nil;
+	case Tag.False:
+	case Tag.True:
+		return Bool;
+	case Tag.Int8:
+	case Tag.Int16:
+	case Tag.Int32:
+	case Tag.Int64:
+		return Int;
+	case Tag.Uint8:
+	case Tag.Uint16:
+	case Tag.Uint32:
+	case Tag.Uint64:
+		return Uint;
+	case Tag.Float32:
+	case Tag.Float64:
+		return Float;
+	case Tag.Bin8:
+	case Tag.Bin16:
+	case Tag.Bin32:
+		return Bytes;
+	case Tag.Str8:
+	case Tag.Str16:
+	case Tag.Str32:
+		return Str;
+	case Tag.Array16:
+	case Tag.Array32:
+		return Arr;
+	case Tag.Map16:
+	case Tag.Map32:
+		return Map;
+	case Tag.FixExt4:
+	case Tag.FixExt8:
+	case Tag.Ext8:
+		return Time;
+	default:
+		if(isPosFixintTag(tag) || isNegFixintTag(tag)) {
+			return Int;
+		}
+		if(isFixstrTag(tag)) {
+			return Str;
+		}
+		if(isFixarrayTag(tag)) {
+			return Arr;
+		}
+		if(isFixmapTag(tag)) {
+			return Map;
+		}
+		throw new TypeError(`unsupported tag ${tag}`);
+	}
 }

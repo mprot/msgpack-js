@@ -5,10 +5,9 @@ const pkg = require("./package.json");
 export default {
 	input: "src/index.ts",
 	output: [
-		{file: pkg["module"], format: "es"},
-		{file: pkg["main"], format: "cjs"},
+		{file: pkg["module"], format: "es", sourcemap: true},
+		{file: pkg["main"], format: "cjs", sourcemap: true},
 	],
-	sourcemap: true,
 	plugins: [
 		require("rollup-plugin-tsc")({
 			compilerOptions: {

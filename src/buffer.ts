@@ -1,3 +1,11 @@
+import {typeError} from "./error";
+import {
+	Tag,
+	fixarrayTag, isFixarrayTag, readFixarray,
+	fixmapTag, isFixmapTag, readFixmap,
+	isFixstrTag, readFixstr,
+} from "./tags";
+
 
 export interface WriteBuffer {
 	put(v: BufferSource): void;
@@ -197,4 +205,119 @@ export function createReadBuffer(buf: BufferSource): ReadBuffer {
 			return view.getFloat64(n-8);
 		},
 	};
+}
+
+
+export function putBlob(buf: WriteBuffer, blob: ArrayBuffer, baseTag: Tag): void {
+	const n = blob.byteLength;
+	if(n <= 255) {
+		buf.putUi8(baseTag);
+		buf.putUi8(n);
+	} else if(n <= 65535) {
+		buf.putUi8(baseTag + 1);
+		buf.putUi16(n);
+	} else if(n <= 4294967295) {
+		buf.putUi8(baseTag + 2);
+		buf.putUi32(n);
+	} else {
+		throw new RangeError("length limit exceeded");
+	}
+	buf.put(blob);
+}
+
+
+export function getBlob(buf: ReadBuffer): ArrayBuffer {
+	const tag = buf.getUi8();
+	let n: number;
+	switch(tag) {
+	case Tag.Nil:
+		n = 0;
+		break;
+	case Tag.Bin8:
+	case Tag.Str8:
+		n = buf.getUi8();
+		break;
+	case Tag.Bin16:
+	case Tag.Str16:
+		n = buf.getUi16();
+		break;
+	case Tag.Bin32:
+	case Tag.Str32:
+		n = buf.getUi32();
+		break;
+	default:
+		if(!isFixstrTag(tag)) {
+			typeError(tag, "bytes or string");
+		}
+		n = readFixstr(tag);
+	}
+	return buf.get(n);
+}
+
+
+export function putArrHeader(buf: WriteBuffer, n: number): void {
+	if(n < 16) {
+		buf.putUi8(fixarrayTag(n));
+	} else {
+		putCollectionHeader(buf, Tag.Array16, n);
+	}
+}
+
+
+export function getArrHeader(buf: ReadBuffer, expect?: number): number {
+	const tag = buf.getUi8();
+	const n = isFixarrayTag(tag)
+		? readFixarray(tag)
+		: getCollectionHeader(buf, tag, Tag.Array16, "array");
+	if(expect != null && n !== expect) {
+		throw new Error(`invalid array header size ${n}`);
+	}
+	return n;
+}
+
+
+export function putMapHeader(buf: WriteBuffer, n: number): void {
+	if(n < 16) {
+		buf.putUi8(fixmapTag(n));
+	} else {
+		putCollectionHeader(buf, Tag.Map16, n);
+	}
+}
+
+
+export function getMapHeader(buf: ReadBuffer, expect?: number): number {
+	const tag = buf.getUi8();
+	const n = isFixmapTag(tag)
+		? readFixmap(tag)
+		: getCollectionHeader(buf, tag, Tag.Map16, "map");
+	if(expect != null && n !== expect) {
+		throw new Error(`invalid map header size ${n}`);
+	}
+	return n;
+}
+
+
+function putCollectionHeader(buf: WriteBuffer, baseTag: Tag, n: number): void {
+	if(n <= 65535) {
+		buf.putUi8(baseTag);
+		buf.putUi16(n);
+	} else if(n <= 4294967295) {
+		buf.putUi8(baseTag + 1);
+		buf.putUi32(n);
+	} else {
+		throw new RangeError("length limit exceeded");
+	}
+}
+
+function getCollectionHeader(buf: ReadBuffer, tag: Tag, baseTag: Tag, typename: string): number {
+	switch(tag) {
+	case Tag.Nil:
+		return 0;
+	case baseTag: // 16 bit
+		return buf.getUi16();
+	case baseTag + 1: // 32 bit
+		return buf.getUi32();
+	default:
+		typeError(tag, typename);
+	}
 }
