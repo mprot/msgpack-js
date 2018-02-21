@@ -51,3 +51,39 @@ import {TypedArr, TypedMap, Int, Str} from "messagepack";
 const IntArray = TypedArr(Int);
 const IntStrMap = TypedMap(Int, Str);
 ```
+
+### Structs
+A struct is an object type with a predefined shape. To define such a type, the function
+```typescript
+function Struct(fields: Fields): Type<Obj<any>>;
+```
+can be used, which creates a type out of the predefined fields. All fields, that do not belong to the struct definition, will be omitted during the encoding and decoding process. To save some bytes and allow name changes, a struct is not simply encoded as a map with string keys. Instead, each field consists of a name, a type, and an ordinal, where the ordinal is used to uniquely identify a field.
+
+Here is an example, how define a struct:
+```typescript
+import {Struct, Int, Str} from "messagepack";
+
+const S = Struct({
+    // ordinal: [name, type],
+    1: ["foo", Int],
+    2: ["bar", Str],
+});
+```
+
+### Unions
+A union is a value, that can be one of several types. To define a union type, the function
+```typescript
+function Union(branches: Branches): Type<any>;
+```
+can be used, which creates a type out of the predefined branches. Each branch consists of an ordinal and a type. If a type should be encoded or decoded, that is not part of the union definition, an exception will be thrown.
+
+Here is an example, how to define a union:
+```typescript
+import {Union, Int, Str} from "messagepack";
+
+const U = Union({
+    // ordinal: type,
+    1: Int,
+    2: Str,
+});
+```
