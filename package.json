@@ -20,7 +20,7 @@
     "build": "rollup -c rollup.lib.js",
     "pretest": "rm -rf build/*",
     "test": "rollup -c rollup.test.js && testsome build/tests.js",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run test"
   },
   "author": "mprot",
   "license": "MIT",
@@ -35,5 +35,7 @@
     "rollup-plugin-tsc": "^1.1.6",
     "testsome": "^1.0.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "npm": "^5.7.1"
+  }
 }

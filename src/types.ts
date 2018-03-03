@@ -14,9 +14,12 @@ import {
 
 
 
+export type EncodeFunc<T> = (buf: WriteBuffer, v: T) => void;
+export type DecodeFunc<T> = (buf: ReadBuffer) => T;
+
 export interface Type<T> {
-	enc(buf: WriteBuffer, v: T): void;
-	dec(buf: ReadBuffer): T;
+	readonly enc: EncodeFunc<T>;
+	readonly dec: DecodeFunc<T>;
 }
 
 export interface Collection<T> extends Type<T> {
@@ -147,7 +150,7 @@ export const Int: Type<number> = {
 export const Uint: Type<number> = {
 	enc(buf: WriteBuffer, v: number): void {
 		if(v < 0) {
-			throw new Error(`not an unsigned integer: ${v}`);
+			throw new Error(`not an uint: ${v}`);
 		} else if(v <= 127) {
 			buf.putUi8(posFixintTag(v));
 		} else if(v <= 255) {
@@ -168,7 +171,7 @@ export const Uint: Type<number> = {
 	dec(buf: ReadBuffer): number {
 		const v = Int.dec(buf);
 		if(v < 0) {
-			throw new RangeError("unsigned integer underflow");
+			throw new RangeError("uint underflow");
 		}
 		return v;
 	},
@@ -279,8 +282,7 @@ export function TypedArr<T>(valueT: Type<T>): Collection<T[]> {
 
 		dec(buf: ReadBuffer): T[] {
 			const res = [];
-			let n = getArrHeader(buf);
-			while(n-- > 0) {
+			for(let n = getArrHeader(buf); n > 0; --n) {
 				res.push(valueT.dec(buf));
 			}
 			return res;
@@ -305,8 +307,7 @@ export function TypedMap<V>(keyT: Type<number|string>, valueT: Type<V>): Collect
 
 		dec(buf: ReadBuffer): Obj<V> {
 			const res = {};
-			let n = getMapHeader(buf);
-			while(n-- > 0) {
+			for(let n = getMapHeader(buf); n > 0; --n) {
 				const k = keyT.dec(buf);
 				res[k] = valueT.dec(buf);
 			}
@@ -316,54 +317,68 @@ export function TypedMap<V>(keyT: Type<number|string>, valueT: Type<V>): Collect
 }
 
 
-export function Struct(fields: Fields): Type<Obj<any>> {
+export function structEncoder(fields: Fields): EncodeFunc<any> {
 	const ordinals = Object.keys(fields);
 
-	return {
-		enc(buf: WriteBuffer, v: any) {
-			putMapHeader(buf, ordinals.length);
-			ordinals.forEach(ord => {
-				const f = fields[ord];
-				Int.enc(buf, Number(ord));
-				f[1].enc(buf, v[f[0]]);
-			});
-		},
+	return (buf: WriteBuffer, v: any): void => {
+		putMapHeader(buf, ordinals.length);
+		ordinals.forEach(ord => {
+			const f = fields[ord];
+			Int.enc(buf, Number(ord));
+			f[1].enc(buf, v[f[0]]);
+		});
+	};
+}
 
-		dec(buf: ReadBuffer): any {
-			const res = {};
-			for(let n = getMapHeader(buf); n > 0; --n) {
-				const f = fields[Int.dec(buf)];
-				if(f) {
-					res[f[0]] = f[1].dec(buf);
-				} else {
-					Any.dec(buf);
-				}
+export function structDecoder(fields: Fields): DecodeFunc<any> {
+	return (buf: ReadBuffer): any => {
+		const res = {};
+		for(let n = getMapHeader(buf); n > 0; --n) {
+			const f = fields[Int.dec(buf)];
+			if(f) {
+				res[f[0]] = f[1].dec(buf);
+			} else {
+				Any.dec(buf);
 			}
-			return res;
-		},
+		}
+		return res;
+	};
+}
+
+export function Struct(fields: Fields): Type<Obj<any>> {
+	return {
+		enc: structEncoder(fields),
+		dec: structDecoder(fields),
 	};
 }
 
 
+export function unionEncoder(branches: Branches): EncodeFunc<any> {
+	return (buf: WriteBuffer, v: any): void => {
+		putArrHeader(buf, 2);
+
+		const ord = branches.ordinalOf(v);
+		Int.enc(buf, ord);
+		branches[ord].enc(buf, v);
+	};
+}
+
+export function unionDecoder(branches: Branches): DecodeFunc<any> {
+	return (buf: ReadBuffer): any => {
+		getArrHeader(buf, 2);
+
+		const t = branches[Int.dec(buf)];
+		if(!t) {
+			throw new TypeError("invalid union type");
+		}
+		return t.dec(buf);
+	};
+}
+
 export function Union(branches: Branches): Type<any> {
 	return {
-		enc(buf: WriteBuffer, v: any) {
-			putArrHeader(buf, 2);
-
-			const ord = branches.ordinalOf(v);
-			Int.enc(buf, ord);
-			branches[ord].enc(buf, v);
-		},
-
-		dec(buf: ReadBuffer): any {
-			getArrHeader(buf, 2);
-
-			const t = branches[Int.dec(buf)];
-			if(!t) {
-				throw new TypeError("invalid union type");
-			}
-			return t.dec(buf);
-		},
+		enc: unionEncoder(branches),
+		dec: unionDecoder(branches),
 	};
 }
 
@@ -372,9 +387,7 @@ function toUTF8(v: string): ArrayBuffer {
 	const n = v.length;
 	const bin = new Uint8Array(4*n);
 
-	let pos = 0;
-	let i = 0;
-	let c: number;
+	let pos = 0, i = 0, c: number;
 	while(i < n) {
 		c = v.charCodeAt(i++);
 		if((c & 0xfc00) === 0xd800) {
@@ -402,9 +415,7 @@ function toUTF8(v: string): ArrayBuffer {
 
 function fromUTF8(buf: ArrayBuffer): string {
 	const bin = new Uint8Array(buf);
-	let n: number;
-	let c: number;
-	let codepoints = [];
+	let n: number, c: number, codepoints = [];
 	for(let i = 0; i < bin.length;) {
 		c = bin[i++];
 		n = 0;
