@@ -70,6 +70,13 @@ const S = Struct({
 });
 ```
 
+If only the encoding or decoding capability is necessary, the functions
+```typescript
+function structEncoder(fields: Fields): EncodeFunc<any>;
+function structDecoder(fields: Fields): DecodeFunc<any>;
+```
+can be used to create encoder and decoder functions respectively.
+
 ### Unions
 A union is a value, that can be one of several types. To define a union type, the function
 ```typescript
@@ -88,22 +95,9 @@ const U = Union({
 });
 ```
 
-### Cyclic Dependencies
-When using the `Struct` and the `Union` functions, the declaration order of types is important. All types has to be defined before they can be used. This makes cyclic type dependencies impossible. To solve this issue, there are separate functions to create the encoder and decoder functions for struct and union types:
+If only the encoding or decoding capability is necessary, the functions
 ```typescript
-function structEncoder(fields: Fields): EncodeFunc<any>;
-function structDecoder(fields: Fields): DecodeFunc<any>;
-
 function unionEncoder(branches: Branches): EncodeFunc<any>;
 function unionDecoder(branches: Branches): DecodeFunc<any>;
 ```
-Equipped with these functions, struct and union type can be defined with
-```typescript
-import {structEncoder, structDecoder} from "messagepack";
-
-const T = {
-    enc: structEncoder(fields),
-    dec: structDecoder(fields),
-};
-```
-where `fields` is an object containing the struct fields (see above).
+can be used to create encoder and decoder functions respectively.
