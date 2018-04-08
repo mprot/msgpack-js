@@ -34,8 +34,5 @@
     "rollup": "^0.56.2",
     "rollup-plugin-tsc": "^1.1.6",
     "testsome": "^1.0.0"
-  },
-  "dependencies": {
-    "npm": "^5.7.1"
   }
 }
