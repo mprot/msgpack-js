@@ -41,6 +41,7 @@ The following types are supported:
 * `Str` for string values,
 * `Arr` for arrays,
 * `Map` for objects,
+* `Raw` for already encoded values,
 * `Time` for date and time values, and
 * `Any` for automatically detecting the type and forward it to one of the types above.
 

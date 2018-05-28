@@ -1,6 +1,6 @@
 import {test} from "testsome";
 import {Tag, posFixintTag, negFixintTag, fixstrTag, fixarrayTag, fixmapTag} from "./tags";
-import {Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, Map, Time, Any, Struct, Union} from "./types";
+import {Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, Map, Raw, Time, Any, Struct, Union} from "./types";
 import {encode, decode} from "./index";
 
 
@@ -215,6 +215,12 @@ test("encode", t => {
 			val: {a: 7, b: 13},
 			typ: Map,
 			bin: [fixmapTag(2), fixstrTag(1), 0x61, posFixintTag(7), fixstrTag(1), 0x62, posFixintTag(13)],
+		},
+		// raw
+		{
+			val: (new Uint8Array(repeat(0x30, 7))).buffer,
+			typ: Raw,
+			bin: repeat(0x30, 7),
 		},
 		// time
 		{
@@ -610,6 +616,157 @@ test("decode", t => {
 			typ: Map,
 			val: {"inf": "∞"},
 			eq: objectEqual,
+		},
+		// raw
+		{
+			bin: [Tag.True],
+			typ: Raw,
+			val: new Uint8Array([Tag.True]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Uint8, 0x00],
+			typ: Raw,
+			val: new Uint8Array([Tag.Uint8, 0x00]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Int16, 0x00, 0x00],
+			typ: Raw,
+			val: new Uint8Array([Tag.Int16, 0x00, 0x00]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Float32, 0x00, 0x00, 0x00, 0x00],
+			typ: Raw,
+			val: new Uint8Array([Tag.Float32, 0x00, 0x00, 0x00, 0x00]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Float64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+			typ: Raw,
+			val: new Uint8Array([Tag.Float64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Bin8, 0x03, 0x30, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.Bin8, 0x03, 0x30, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Bin16, 0x0, 0x03, 0x30, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.Bin16, 0x0, 0x03, 0x30, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Bin32, 0x0, 0x0, 0x0, 0x03, 0x30, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.Bin32, 0x0, 0x0, 0x0, 0x03, 0x30, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Array16, 0x0, 0x03, Tag.Nil, Tag.Nil, Tag.Nil],
+			typ: Raw,
+			val: new Uint8Array([Tag.Array16, 0x0, 0x03, Tag.Nil, Tag.Nil, Tag.Nil]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Array32, 0x0, 0x0, 0x0, 0x03, Tag.Nil, Tag.Nil, Tag.Nil],
+			typ: Raw,
+			val: new Uint8Array([Tag.Array32, 0x0, 0x0, 0x0, 0x03, Tag.Nil, Tag.Nil, Tag.Nil]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Map16, 0x0, 0x03, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil],
+			typ: Raw,
+			val: new Uint8Array([Tag.Map16, 0x0, 0x03, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Map32, 0x0, 0x0, 0x0, 0x03, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil],
+			typ: Raw,
+			val: new Uint8Array([Tag.Map32, 0x0, 0x0, 0x0, 0x03, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.FixExt1, 0x0d, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.FixExt1, 0x0d, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.FixExt2, 0x0d, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.FixExt2, 0x0d, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.FixExt4, 0x0d, 0x30, 0x30, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.FixExt4, 0x0d, 0x30, 0x30, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.FixExt8, 0x0d, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.FixExt8, 0x0d, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.FixExt16, 0x0d, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.FixExt16, 0x0d, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Ext8, 0x05, 0x0d, 0x30, 0x30, 0x30, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.Ext8, 0x05, 0x0d, 0x30, 0x30, 0x30, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin: [Tag.Ext16, 0x0, 0x05, 0x0d, 0x30, 0x30, 0x30, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.Ext16, 0x0, 0x05, 0x0d, 0x30, 0x30, 0x30, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin:  [Tag.Ext32, 0x0, 0x0, 0x0, 0x05, 0x0d, 0x30, 0x30, 0x30, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([Tag.Ext32, 0x0, 0x0, 0x0, 0x05, 0x0d, 0x30, 0x30, 0x30, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin:  [posFixintTag(7)],
+			typ: Raw,
+			val: new Uint8Array([posFixintTag(7)]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin:  [negFixintTag(-7)],
+			typ: Raw,
+			val: new Uint8Array([negFixintTag(-7)]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin:  [fixstrTag(3), 0x30, 0x30, 0x30],
+			typ: Raw,
+			val: new Uint8Array([fixstrTag(3), 0x30, 0x30, 0x30]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin:  [fixarrayTag(3), Tag.Nil, Tag.Nil, Tag.Nil],
+			typ: Raw,
+			val: new Uint8Array([fixarrayTag(3), Tag.Nil, Tag.Nil, Tag.Nil]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
+		},
+		{
+			bin:  [fixmapTag(3), Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil],
+			typ: Raw,
+			val: new Uint8Array([fixmapTag(3), Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil]),
+			eq: (x, y) => bufEqual(new Uint8Array(x), y),
 		},
 		// time
 		{

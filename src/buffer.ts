@@ -1,6 +1,7 @@
 import {typeError} from "./error";
 import {
 	Tag,
+	isPosFixintTag, isNegFixintTag,
 	fixarrayTag, isFixarrayTag, readFixarray,
 	fixmapTag, isFixmapTag, readFixmap,
 	isFixstrTag, readFixstr,
@@ -319,5 +320,141 @@ function getCollectionHeader(buf: ReadBuffer, tag: Tag, baseTag: Tag, typename: 
 		return buf.getUi32();
 	default:
 		typeError(tag, typename);
+	}
+}
+
+
+export function getRaw(buf: ReadBuffer, res: WriteBuffer): void {
+	let n;
+	const tag = buf.getUi8();
+	res.putUi8(tag);
+
+	switch(tag) {
+	case Tag.Nil:
+	case Tag.False:
+	case Tag.True:
+		break;
+
+	case Tag.Int8:
+	case Tag.Uint8:
+		res.putUi8(buf.getUi8());
+		break;
+
+	case Tag.Int16:
+	case Tag.Uint16:
+		res.putUi16(buf.getUi16());
+		break;
+
+	case Tag.Int32:
+	case Tag.Uint32:
+	case Tag.Float32:
+		res.putUi32(buf.getUi32());
+		break;
+
+	case Tag.Int64:
+	case Tag.Uint64:
+	case Tag.Float64:
+		res.putUi64(buf.getUi64());
+		break;
+
+	case Tag.Str8:
+	case Tag.Bin8:
+		res.putUi8(n = buf.getUi8());
+		res.put(buf.get(n));
+		break;
+
+	case Tag.Str16:
+	case Tag.Bin16:
+		res.putUi16(n = buf.getUi16());
+		res.put(buf.get(n));
+		break;
+
+	case Tag.Str32:
+	case Tag.Bin32:
+		res.putUi32(n = buf.getUi32());
+		res.put(buf.get(n));
+		break;
+
+	case Tag.Array16:
+		res.putUi16(n = buf.getUi16());
+		for(let i = 0; i < n; ++i) {
+			getRaw(buf, res);
+		}
+		break;
+
+	case Tag.Array32:
+		res.putUi32(n = buf.getUi32());
+		for(let i = 0; i < n; ++i) {
+			getRaw(buf, res);
+		}
+		break;
+
+	case Tag.Map16:
+		res.putUi16(n = buf.getUi16());
+		for(let i = 0; i < 2*n; ++i) {
+			getRaw(buf, res);
+		}
+		break;
+
+	case Tag.Map32:
+		res.putUi32(n = buf.getUi32());
+		for(let i = 0; i < 2*n; ++i) {
+			getRaw(buf, res);
+		}
+		break;
+
+	case Tag.FixExt1:
+		res.put(buf.get(2))
+		break;
+
+	case Tag.FixExt2:
+		res.put(buf.get(3))
+		break;
+
+	case Tag.FixExt4:
+		res.put(buf.get(5))
+		break;
+
+	case Tag.FixExt8:
+		res.put(buf.get(9))
+		break;
+
+	case Tag.FixExt16:
+		res.put(buf.get(17))
+		break;
+
+	case Tag.Ext8:
+		res.putUi8(n = buf.getUi8());
+		res.put(buf.get(1 + n));
+		break;
+
+	case Tag.Ext16:
+		res.putUi16(n = buf.getUi16());
+		res.put(buf.get(1 + n));
+		break;
+
+	case Tag.Ext32:
+		res.putUi32(n = buf.getUi32());
+		res.put(buf.get(1 + n));
+		break;
+
+	default:
+		if(isPosFixintTag(tag) || isNegFixintTag(tag)) {
+			// do nothing
+		} else if(isFixstrTag(tag)) {
+			res.put(buf.get(readFixstr(tag)));
+		} else if(isFixarrayTag(tag)) {
+			n = readFixarray(tag);
+			for(let i = 0; i < n; ++i) {
+				getRaw(buf, res);
+			}
+		} else if(isFixmapTag(tag)) {
+			n = 2 * readFixmap(tag);
+			for(let i = 0; i < n; ++i) {
+				getRaw(buf, res);
+			}
+		} else {
+			throw new TypeError(`unknown tag 0x${tag.toString(16)}`);
+		}
 	}
 }

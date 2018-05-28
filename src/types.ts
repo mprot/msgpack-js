@@ -1,9 +1,10 @@
 import {typeError} from "./error";
 import {
-	WriteBuffer, ReadBuffer,
+	WriteBuffer, ReadBuffer, createWriteBuffer,
 	putBlob, getBlob,
 	putArrHeader, getArrHeader,
 	putMapHeader, getMapHeader,
+	getRaw,
 } from "./buffer";
 import {
 	Tag,
@@ -222,6 +223,20 @@ export const Str: Type<string> = {
 
 	dec(buf: ReadBuffer): string {
 		return fromUTF8(getBlob(buf));
+	},
+};
+
+
+export const Raw: Type<ArrayBuffer> = {
+	enc(buf: WriteBuffer, v: ArrayBuffer): void {
+		buf.put(v);
+	},
+
+	dec(buf: ReadBuffer): ArrayBuffer {
+		const res = createWriteBuffer();
+		getRaw(buf, res);
+		const arr = res.ui8array();
+		return arr.buffer.slice(0, arr.length);
 	},
 };
 
