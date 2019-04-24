@@ -1,6 +1,6 @@
 {
   "name": "messagepack",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "A MessagePack implementation for JavaScript.",
   "main": "dist/messagepack.cjs.js",
   "module": "dist/messagepack.es.js",
