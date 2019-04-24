@@ -141,7 +141,7 @@ export function createWriteBuffer(): WriteBuffer {
 
 
 export function createReadBuffer(buf: BufferSource): ReadBuffer {
-	let view = new DataView(ArrayBuffer.isView(buf) ? buf.buffer : buf);
+	let view = ArrayBuffer.isView(buf) ? new DataView(buf.buffer, buf.byteOffset, buf.byteLength) : new DataView(buf);
 	let n = 0;
 	
 	return {
