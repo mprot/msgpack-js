@@ -151,8 +151,8 @@ export function createReadBuffer(buf: BufferSource): ReadBuffer {
 
 		get(len: number): ArrayBuffer {
 			n += len;
-			const offset = view.buffer.byteOffset;
-			return view.buffer.slice(offset+n-len, offset+n);
+			const off = view.byteOffset;
+			return view.buffer.slice(off+n-len, off+n);
 		},
 
 		getI8(): number {
