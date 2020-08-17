@@ -429,27 +429,7 @@ function toUTF8(v: string): ArrayBuffer {
 }
 
 function fromUTF8(buf: ArrayBuffer): string {
-	const bin = new Uint8Array(buf);
-	let n: number, c: number, codepoints = [];
-	for(let i = 0; i < bin.length;) {
-		c = bin[i++];
-		n = 0;
-		switch(c & 0xf0) {
-		case 0xf0:  n = 3; break;
-		case 0xe0:  n = 2; break;
-		case 0xd0:
-		case 0xc0:  n = 1; break;
-		}
-
-		if(n !== 0) {
-			c &= (1 << (6-n)) - 1;
-			for(let k = 0; k < n; ++k) {
-				c = (c<<6) + (bin[i++] & 0x3f);
-			}
-		}
-		codepoints.push(c);
-	}
-	return String.fromCodePoint.apply(null, codepoints);
+	return (new TextDecoder('utf-8')).decode(buf);
 }
 
 function typeOf(v: any): Type<any> {
