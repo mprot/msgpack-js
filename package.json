@@ -30,7 +30,7 @@
     "url": "git+https://github.com/mprot/msgpack-js.git"
   },
   "devDependencies": {
-    "@types/node": "^10.12.18",
+    "@types/node": "^14.6.0",
     "rollup": "^0.68.2",
     "rollup-plugin-tsc": "^1.1.15",
     "testsome": "^1.0.2"
