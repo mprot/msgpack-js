@@ -429,7 +429,7 @@ function toUTF8(v: string): ArrayBuffer {
 }
 
 function fromUTF8(buf: ArrayBuffer): string {
-	return (new TextDecoder('utf-8')).decode(buf);
+	return (new TextDecoder("utf-8")).decode(buf);
 }
 
 function typeOf(v: any): Type<any> {
