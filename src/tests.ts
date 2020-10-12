@@ -196,6 +196,11 @@ test("encode", t => {
 		},
 		{
 			val: 4294967296,
+			typ: Uint32,
+			bin: [Tag.Uint32, 0x00, 0x00, 0x00, 0x00],
+		},
+		{
+			val: 4294967296,
 			typ: Uint,
 			bin: [Tag.Uint64, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00],
 		},
