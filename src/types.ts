@@ -148,6 +148,12 @@ export const Int: Type<number> = {
 };
 
 
+export const Int8 = createSubType(Tag.Int8, Int);
+export const Int16 = createSubType(Tag.Int16, Int);
+export const Int32 = createSubType(Tag.Int32, Int);
+export const Int64 = createSubType(Tag.Int64, Int);
+
+
 export const Uint: Type<number> = {
 	enc(buf: WriteBuffer, v: number): void {
 		if(v < 0) {
@@ -178,11 +184,16 @@ export const Uint: Type<number> = {
 	},
 };
 
+export const Uint8 = createSubType(Tag.Uint8, Uint);
+export const Uint16 = createSubType(Tag.Uint16, Uint);
+export const Uint32 = createSubType(Tag.Uint32, Uint);
+export const Uint64 = createSubType(Tag.Uint64, Uint);
+
 
 export const Float: Type<number> = {
 	enc(buf: WriteBuffer, v: number): void {
 		buf.putUi8(Tag.Float64);
-		buf.putF(v);
+		buf.putF64(v);
 	},
 
 	dec(buf: ReadBuffer): number {
@@ -200,6 +211,10 @@ export const Float: Type<number> = {
 	},
 };
 
+
+export const Float64 = Float;
+
+export const Float32 = createSubType(Tag.Float32, Float);
 
 export const Bytes: Type<ArrayBuffer> = {
 	enc(buf: WriteBuffer, v: ArrayBuffer): void {
@@ -325,6 +340,31 @@ export function TypedMap<V>(keyT: Type<number|string>, valueT: Type<V>): Collect
 			for(let n = getMapHeader(buf); n > 0; --n) {
 				const k = keyT.dec(buf);
 				res[k] = valueT.dec(buf);
+			}
+			return res;
+		},
+	};
+}
+
+export function TypedObj(objT: Obj<Type<any>>): Collection<Obj<Type<any>>> {
+	return {
+		encHeader: putMapHeader,
+		decHeader: getMapHeader,
+
+		enc(buf: WriteBuffer, v: Obj<Type<any>>): void {
+			const props = Object.keys(v);
+			putMapHeader(buf, props.length);
+			props.forEach(p => {
+				Str.enc(buf, p)
+				objT[p].enc(buf, v[p])
+			});
+		},
+
+		dec(buf: ReadBuffer): Obj<Type<any>> {
+			const res = {};
+			for(let n = getMapHeader(buf); n > 0; --n) {
+				const k = Str.dec(buf);
+				res[k] = objT[k].dec(buf);
 			}
 			return res;
 		},
@@ -507,5 +547,40 @@ function tagType(tag: Tag): Type<any> {
 			return Map;
 		}
 		throw new TypeError(`unsupported tag ${tag}`);
+	}
+}
+
+function createSubType(tag: Tag, type: Type<number>) {
+	return {
+		enc(buf: WriteBuffer, v: number): void {
+			buf.putUi8(tag);
+
+			switch(tag) {
+			case Tag.Nil: break;
+
+			// signed int types
+			case Tag.Int8: buf.putI8(v); break;
+			case Tag.Int16: buf.putI16(v); break;
+			case Tag.Int32: buf.putI32(v); break;
+			case Tag.Int64: buf.putI64(v); break;
+
+			// unsigned int types
+			case Tag.Uint8: buf.putUi8(v); break;
+			case Tag.Uint16: buf.putUi16(v); break;
+			case Tag.Uint32: buf.putUi32(v); break;
+			case Tag.Uint64: buf.putUi64(v); break;
+
+			// float types
+			case Tag.Float32: buf.putF32(v); break;
+			case Tag.Float64: buf.putF64(v); break;
+
+			default:
+				typeError(tag, "");
+			}
+		},
+
+		dec(buf: ReadBuffer): number {
+			return type.dec(buf);
+		},
 	}
 }
