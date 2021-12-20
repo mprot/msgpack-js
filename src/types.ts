@@ -212,7 +212,7 @@ export const Bytes: Type<ArrayBuffer> = {
 
 export const Str: Type<string> = {
 	enc(buf: WriteBuffer, v: string): void {
-		const utf8 = toUTF8(v);
+		const utf8 = (new TextEncoder()).encode(v).buffer;
 		if(utf8.byteLength < 32) {
 			buf.putUi8(fixstrTag(utf8.byteLength));
 			buf.put(utf8);
@@ -222,7 +222,7 @@ export const Str: Type<string> = {
 	},
 
 	dec(buf: ReadBuffer): string {
-		return fromUTF8(getBlob(buf));
+		return (new TextDecoder()).decode(getBlob(buf));
 	},
 };
 
@@ -395,41 +395,6 @@ export function Union(branches: Branches): Type<any> {
 		enc: unionEncoder(branches),
 		dec: unionDecoder(branches),
 	};
-}
-
-
-function toUTF8(v: string): ArrayBuffer {
-	const n = v.length;
-	const bin = new Uint8Array(4*n);
-
-	let pos = 0, i = 0, c: number;
-	while(i < n) {
-		c = v.charCodeAt(i++);
-		if((c & 0xfc00) === 0xd800) {
-			c = (c<<10) + v.charCodeAt(i++) - 0x35fdc00;
-		}
-
-		if(c < 0x80) {
-			bin[pos++] = c;
-		} else if(c < 0x800) {
-			bin[pos++] = 0xc0 + (c >> 6);
-			bin[pos++] = 0x80 + (c & 0x3f);
-		} else if(c < 0x10000) {
-			bin[pos++] = 0xe0 + (c >> 12);
-			bin[pos++] = 0x80 + ((c>>6) & 0x3f);
-			bin[pos++] = 0x80 + (c & 0x3f);
-		} else {
-			bin[pos++] = 0xf0 + (c >> 18);
-			bin[pos++] = 0x80 + ((c>>12) & 0x3f);
-			bin[pos++] = 0x80 + ((c>>6) & 0x3f);
-			bin[pos++] = 0x80 + (c & 0x3f);
-		}
-	}
-	return bin.buffer.slice(0, pos);
-}
-
-function fromUTF8(buf: ArrayBuffer): string {
-	return (new TextDecoder("utf-8")).decode(buf);
 }
 
 function typeOf(v: any): Type<any> {
