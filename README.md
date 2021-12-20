@@ -83,7 +83,7 @@ A union is a value, that can be one of several types. To define a union type, th
 ```typescript
 function Union(branches: Branches): Type<any>;
 ```
-can be used, which creates a type out of the predefined branches. Each branch consists of an ordinal and a type. If a type should be encoded or decoded, that is not part of the union definition, an exception will be thrown.
+can be used, which creates a type out of the predefined branches. Each branch consists of an ordinal and a type. If a type should be encoded or decoded, that is not part of the union definition, an exception will be thrown. Also, `branches` needs to define a function to determine the ordinal number from a value.
 
 Here is an example, how to define a union:
 ```typescript
@@ -93,6 +93,13 @@ const U = Union({
     // ordinal: type,
     1: Int,
     2: Str,
+    ordinalOf(v) {
+        switch(typeof v) {
+        case "string": return 1;
+        case "number": return 2;
+        default: new TypeError("invalid union type");
+        }
+    },
 });
 ```
 
