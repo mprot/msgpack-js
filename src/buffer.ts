@@ -21,7 +21,8 @@ export interface WriteBuffer {
 	putUi32(v: number): void;
 	putUi64(v: number): void;
 
-	putF(v: number): void;
+	putF32(v: number): void;
+	putF64(v: number): void;
 
 	ui8array(): Uint8Array;
 }
@@ -49,7 +50,7 @@ export interface ReadBuffer {
 export function createWriteBuffer(): WriteBuffer {
 	let view = new DataView(new ArrayBuffer(64));
 	let n = 0;
-	
+
 	function need(x: number): void {
 		if(n+x > view.byteLength) {
 			const arr = new Uint8Array(Math.max(n+x, view.byteLength+64));
@@ -127,7 +128,13 @@ export function createWriteBuffer(): WriteBuffer {
 			n += 8;
 		},
 
-		putF(v: number): void {
+		putF32(v: number): void {
+			need(4);
+			view.setFloat32(n, v);
+			n += 4;
+		},
+
+		putF64(v: number): void {
 			need(8);
 			view.setFloat64(n, v);
 			n += 8;
@@ -143,7 +150,7 @@ export function createWriteBuffer(): WriteBuffer {
 export function createReadBuffer(buf: BufferSource): ReadBuffer {
 	let view = ArrayBuffer.isView(buf) ? new DataView(buf.buffer, buf.byteOffset, buf.byteLength) : new DataView(buf);
 	let n = 0;
-	
+
 	return {
 		peek(): number {
 			return view.getUint8(n);

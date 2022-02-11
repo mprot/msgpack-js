@@ -1,13 +1,13 @@
 import {test} from "testsome";
 import {Tag, posFixintTag, negFixintTag, fixstrTag, fixarrayTag, fixmapTag} from "./tags";
-import {Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, Map, Raw, Time, Any, Struct, Union} from "./types";
+import {Nil, Bool, Int, Uint, Float, Bytes, Str, Arr, Map, Raw, Time, Any, Struct, Union, TypedObj, Int32, Uint32, Uint8, Uint16, Uint64, Float32, Float64, Int8, Int16, Int64} from "./types";
 import {encode, decode} from "./index";
 
 
 
 test("encode", t => {
 	const tests = [
-		// nil
+		//#region nil
 		{
 			val: undefined,
 			typ: Nil,
@@ -33,7 +33,8 @@ test("encode", t => {
 			typ: Nil,
 			bin: [Tag.Nil],
 		},
-		// bool
+		//#endregion
+		//#region bool
 		{
 			val: true,
 			typ: Bool,
@@ -44,7 +45,8 @@ test("encode", t => {
 			typ: Bool,
 			bin: [Tag.False],
 		},
-		// int
+		//#endregion
+		//#region int
 		{
 			val: 7,
 			typ: Int,
@@ -61,8 +63,18 @@ test("encode", t => {
 			bin: [Tag.Int8, 0x80],
 		},
 		{
+			val: -128,
+			typ: Int8,
+			bin: [Tag.Int8, 0x80],
+		},
+		{
 			val: -32768,
 			typ: Int,
+			bin: [Tag.Int16, 0x80, 0x0],
+		},
+		{
+			val: -32768,
+			typ: Int16,
 			bin: [Tag.Int16, 0x80, 0x0],
 		},
 		{
@@ -71,8 +83,18 @@ test("encode", t => {
 			bin: [Tag.Int16, 0x7f, 0xff],
 		},
 		{
+			val: 32767,
+			typ: Int16,
+			bin: [Tag.Int16, 0x7f, 0xff],
+		},
+		{
 			val: 2147483647,
 			typ: Int,
+			bin: [Tag.Int32, 0x7f, 0xff, 0xff, 0xff],
+		},
+		{
+			val: 2147483647,
+			typ: Int32,
 			bin: [Tag.Int32, 0x7f, 0xff, 0xff, 0xff],
 		},
 		{
@@ -81,8 +103,18 @@ test("encode", t => {
 			bin: [Tag.Int32, 0x80, 0x0, 0x0, 0x0],
 		},
 		{
+			val: -2147483648,
+			typ: Int32,
+			bin: [Tag.Int32, 0x80, 0x0, 0x0, 0x0],
+		},
+		{
 			val: 2147483648,
 			typ: Int,
+			bin: [Tag.Int64, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00],
+		},
+		{
+			val: 2147483648,
+			typ: Int64,
 			bin: [Tag.Int64, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00],
 		},
 		{
@@ -91,8 +123,18 @@ test("encode", t => {
 			bin: [Tag.Int64, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00],
 		},
 		{
+			val: 4294967296,
+			typ: Int64,
+			bin: [Tag.Int64, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00],
+		},
+		{
 			val: -2147483649,
 			typ: Int,
+			bin: [Tag.Int64, 0xff, 0xff, 0xff, 0xff, 0x7f, 0xff, 0xff, 0xff],
+		},
+		{
+			val: -2147483649,
+			typ: Int64,
 			bin: [Tag.Int64, 0xff, 0xff, 0xff, 0xff, 0x7f, 0xff, 0xff, 0xff],
 		},
 		{
@@ -101,11 +143,22 @@ test("encode", t => {
 			bin: [Tag.Int64, 0x00, 0x00, 0x00, 0x80, 0x00, 0x80, 0x00, 0x40],
 		},
 		{
+			val: 549764202560,
+			typ: Int64,
+			bin: [Tag.Int64, 0x00, 0x00, 0x00, 0x80, 0x00, 0x80, 0x00, 0x40],
+		},
+		{
 			val: -549764202560,
 			typ: Int,
 			bin: [Tag.Int64, 0xff, 0xff, 0xff, 0x7f, 0xff, 0x7f, 0xff, 0xc0],
 		},
-		// uint
+		{
+			val: -549764202560,
+			typ: Int64,
+			bin: [Tag.Int64, 0xff, 0xff, 0xff, 0x7f, 0xff, 0x7f, 0xff, 0xc0],
+		},
+		//#endregion
+		//#region uint
 		{
 			val: 7,
 			typ: Uint,
@@ -117,8 +170,18 @@ test("encode", t => {
 			bin: [Tag.Uint8, 0xff],
 		},
 		{
+			val: 255,
+			typ: Uint8,
+			bin: [Tag.Uint8, 0xff],
+		},
+		{
 			val: 65535,
 			typ: Uint,
+			bin: [Tag.Uint16, 0xff, 0xff],
+		},
+		{
+			val: 65535,
+			typ: Uint16,
 			bin: [Tag.Uint16, 0xff, 0xff],
 		},
 		{
@@ -127,8 +190,23 @@ test("encode", t => {
 			bin: [Tag.Uint32, 0xff, 0xff, 0xff, 0xff],
 		},
 		{
+			val: 4294967295,
+			typ: Uint32,
+			bin: [Tag.Uint32, 0xff, 0xff, 0xff, 0xff],
+		},
+		{
+			val: 4294967296,
+			typ: Uint32,
+			bin: [Tag.Uint32, 0x00, 0x00, 0x00, 0x00],
+		},
+		{
 			val: 4294967296,
 			typ: Uint,
+			bin: [Tag.Uint64, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00],
+		},
+		{
+			val: 4294967296,
+			typ: Uint64,
 			bin: [Tag.Uint64, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00],
 		},
 		{
@@ -136,13 +214,30 @@ test("encode", t => {
 			typ: Uint,
 			bin: [Tag.Uint64, 0x00, 0x00, 0x00, 0x80, 0x00, 0x80, 0x00, 0x40],
 		},
-		// float
+		{
+			val: 549764202560,
+			typ: Uint64,
+			bin: [Tag.Uint64, 0x00, 0x00, 0x00, 0x80, 0x00, 0x80, 0x00, 0x40],
+		},
+		//#endregion
+		//#region float
 		{
 			val: 3.141592,
 			typ: Float,
 			bin: [Tag.Float64, 0x40, 0x09, 0x21, 0xfa, 0xfc, 0x8b, 0x00, 0x7a],
 		},
-		// bytes
+		{
+			val: 1.5,
+			typ: Float32,
+			bin: [Tag.Float32, 0x3f, 0xc0, 0x00, 0x00],
+		},
+		{
+			val: 3.141592,
+			typ: Float64,
+			bin: [Tag.Float64, 0x40, 0x09, 0x21, 0xfa, 0xfc, 0x8b, 0x00, 0x7a],
+		},
+		//#endregion
+		//#region bytes
 		{
 			val: (new Uint8Array(repeat(0x30, 1))).buffer,
 			typ: Bytes,
@@ -158,7 +253,8 @@ test("encode", t => {
 			typ: Bytes,
 			bin: [Tag.Bin32, 0x00, 0x01, 0x00, 0x00].concat(repeat(0x30, 65536)),
 		},
-		// string
+		//#endregion
+		//#region string
 		{
 			val: "0",
 			typ: Str,
@@ -199,7 +295,8 @@ test("encode", t => {
 			typ: Str,
 			bin: [Tag.Str32, 0x00, 0x01, 0x00, 0x00].concat(repeat(0x30, 65536)),
 		},
-		// array (32 bit not testable due to oom)
+		//#endregion
+		//#region array (32 bit not testable due to oom)
 		{
 			val: repeat(13, 7),
 			typ: Arr,
@@ -210,19 +307,22 @@ test("encode", t => {
 			typ: Arr,
 			bin: [Tag.Array16, 0xff, 0xff].concat(repeat(posFixintTag(13), 65535)),
 		},
-		// map
+		//#endregion
+		//#region map
 		{
 			val: {a: 7, b: 13},
 			typ: Map,
 			bin: [fixmapTag(2), fixstrTag(1), 0x61, posFixintTag(7), fixstrTag(1), 0x62, posFixintTag(13)],
 		},
-		// raw
+		//#endregion
+		//#region raw
 		{
 			val: (new Uint8Array(repeat(0x30, 7))).buffer,
 			typ: Raw,
 			bin: repeat(0x30, 7),
 		},
-		// time
+		//#endregion
+		//#region time
 		{
 			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15)),
 			typ: Time,
@@ -233,7 +333,8 @@ test("encode", t => {
 			typ: Time,
 			bin: [Tag.Ext8, 12, 0xff, 0x00, 0xf4, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0xca, 0x52, 0xa7],
 		},
-		// any
+		//#endregion
+		//#region any
 		{
 			val: undefined,
 			typ: Any,
@@ -299,7 +400,8 @@ test("encode", t => {
 			typ: Any,
 			bin: [Tag.Ext8, 12, 0xff, 0x00, 0xf4, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0xca, 0x52, 0xa7],
 		},
-		// struct
+		//#endregion
+		//#region struct
 		{
 			val: {
 				foo: 7,
@@ -311,7 +413,8 @@ test("encode", t => {
 			}),
 			bin: [fixmapTag(2), posFixintTag(1), posFixintTag(7), posFixintTag(3), fixstrTag(1), 0x37],
 		},
-		// union
+		//#endregion
+		//#region union
 		{
 			val: 7,
 			typ: Union({
@@ -330,6 +433,42 @@ test("encode", t => {
 			}),
 			bin: [fixarrayTag(2), posFixintTag(13), fixstrTag(1), 0x37],
 		},
+		//#endregion
+		//#region typedObj
+		{
+			val: {
+				a: 7,
+				b: '7',
+			},
+			typ: TypedObj({
+				a: Int,
+				b: Str,
+			}),
+			bin: [fixmapTag(2), fixstrTag(1), 0x61, posFixintTag(7), fixstrTag(1), 0x62, fixstrTag(1), 0x37],
+		},
+		{
+			val: {
+				a: 2147483647,
+				b: '7',
+			},
+			typ: TypedObj({
+				a: Int32,
+				b: Str,
+			}),
+			bin: [fixmapTag(2), fixstrTag(1), 0x61, Tag.Int32, 0x7f, 0xff, 0xff, 0xff, fixstrTag(1), 0x62, fixstrTag(1), 0x37],
+		},
+		{
+			val: {
+				a: 1,
+				b: 2,
+			},
+			typ: TypedObj({
+				a: Int32,
+				b: Uint32,
+			}),
+			bin: [fixmapTag(2), fixstrTag(1), 0x61, Tag.Int32, 0x00, 0x00, 0x00, 0x01, fixstrTag(1), 0x62, Tag.Uint32, 0x00, 0x00, 0x00, 0x02],
+		},
+		//#endregion
 	];
 
 	for(let i = 0; i < tests.length; ++i) {
@@ -338,23 +477,24 @@ test("encode", t => {
 			const bin = encode(test.val, test.typ);
 			const expected = new Uint8Array(test.bin);
 			if(!bufEqual(bin, expected)) {
-				t.error(`unexpected encoding at ${i} for '${test.val}': ${fmtBuf(bin)}, expected ${fmtBuf(expected)}`);
+				t.error(`unexpected encoding at ${i} for '${JSON.stringify(test.val)}': ${fmtBuf(bin)}, expected ${fmtBuf(expected)}`);
 			}
 		} catch(e) {
-			t.error(`unexpected encoding error at ${i} for '${test.val}': ${e}`);
+			t.error(`unexpected encoding error at ${i} for '${JSON.stringify(test.val)}': ${e}`);
 		}
 	}
 });
 
 test("decode", t => {
 	const tests = [
-		// nil
+    //#region nil
 		{
 			bin: [Tag.Nil],
 			typ: Nil,
 			val: null,
 		},
-		// bool
+		//#endregion
+    //#region bool
 		{
 			bin: [Tag.Nil],
 			typ: Bool,
@@ -370,7 +510,8 @@ test("decode", t => {
 			typ: Bool,
 			val: true,
 		},
-		// int
+		//#endregion
+    //#region int
 		{
 			bin: [posFixintTag(7)],
 			typ: Int,
@@ -451,7 +592,8 @@ test("decode", t => {
 			typ: Int,
 			val: 4992121274275,
 		},
-		// uint
+		//#endregion
+    //#region uint
 		{
 			bin: [posFixintTag(7)],
 			typ: Int,
@@ -502,7 +644,8 @@ test("decode", t => {
 			typ: Int,
 			val: 4992121274275,
 		},
-		// float
+		//#endregion
+    //#region float
 		{
 			bin: [Tag.Nil],
 			typ: Float,
@@ -518,7 +661,8 @@ test("decode", t => {
 			typ: Float,
 			val: 3.141592,
 		},
-		// bytes
+		//#endregion
+    //#region bytes
 		{
 			bin: [fixstrTag(5), 0x30, 0x30, 0x30, 0x30, 0x30],
 			typ: Bytes,
@@ -543,7 +687,8 @@ test("decode", t => {
 			val: new Uint8Array(repeat(0x30, 65536)),
 			eq: (x, y) => bufEqual(new Uint8Array(x), y),
 		},
-		// string
+		//#endregion
+    //#region string
 		{
 			bin: [fixstrTag(2), 0xc3, 0xa4],
 			typ: Str,
@@ -579,7 +724,8 @@ test("decode", t => {
 			typ: Str,
 			val: repeats("0", 65536),
 		},
-		// array
+		//#endregion
+    //#region array
 		{
 			bin: [fixarrayTag(2), posFixintTag(7), fixstrTag(1), 0x30],
 			typ: Arr,
@@ -598,7 +744,8 @@ test("decode", t => {
 			val: ["∞"],
 			eq: arrayEqual,
 		},
-		// map
+		//#endregion
+    //#region map
 		{
 			bin: [fixmapTag(1), fixstrTag(1), 0x61, posFixintTag(7)],
 			typ: Map,
@@ -617,7 +764,8 @@ test("decode", t => {
 			val: {"inf": "∞"},
 			eq: objectEqual,
 		},
-		// raw
+		//#endregion
+    //#region raw
 		{
 			bin: [Tag.True],
 			typ: Raw,
@@ -768,7 +916,8 @@ test("decode", t => {
 			val: new Uint8Array([fixmapTag(3), Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil, Tag.Nil]),
 			eq: (x, y) => bufEqual(new Uint8Array(x), y),
 		},
-		// time
+		//#endregion
+    //#region time
 		{
 			bin: [Tag.FixExt4, 0xff, 0x59, 0xca, 0x52, 0xa7],
 			typ: Time,
@@ -787,7 +936,8 @@ test("decode", t => {
 			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15, 16)),
 			eq: dateEqual,
 		},
-		// any
+		//#endregion
+    //#region any
 		{
 			bin: [Tag.Nil],
 			typ: Any,
@@ -955,7 +1105,8 @@ test("decode", t => {
 			val: new Date(Date.UTC(2017, 8, 26, 13, 14, 15, 16)),
 			eq: dateEqual,
 		},
-		// struct
+		//#endregion
+    //#region struct
 		{
 			bin: [fixmapTag(2), posFixintTag(1), posFixintTag(7), posFixintTag(3), fixstrTag(1), 0x37],
 			typ: Struct({
@@ -968,7 +1119,8 @@ test("decode", t => {
 			},
 			eq: objectEqual,
 		},
-		// union
+		//#endregion
+    //#region union
 		{
 			bin: [fixarrayTag(2), posFixintTag(4), posFixintTag(7)],
 			typ: Union({
@@ -987,6 +1139,45 @@ test("decode", t => {
 			}),
 			val: "7",
 		},
+		//#endregion
+		//#region typedObj
+		{
+			bin: [fixmapTag(2), fixstrTag(1), 0x61, posFixintTag(7), fixstrTag(1), 0x62, fixstrTag(1), 0x37],
+			typ: TypedObj({
+				a: Int,
+				b: Str,
+			}),
+			val: {
+				a: 7,
+				b: '7',
+			},
+			eq: objectEqual,
+		},
+		{
+			bin: [fixmapTag(2), fixstrTag(1), 0x61, Tag.Int32, 0x7f, 0xff, 0xff, 0xff, fixstrTag(1), 0x62, fixstrTag(1), 0x37],
+			typ: TypedObj({
+				a: Int32,
+				b: Str,
+			}),
+			val: {
+				a: 2147483647,
+				b: '7',
+			},
+			eq: objectEqual,
+		},
+		{
+			bin: [fixmapTag(2), fixstrTag(1), 0x61, Tag.Int32, 0x7f, 0xff, 0xff, 0xff, fixstrTag(1), 0x62, Tag.Uint32, 0xff, 0xff, 0xff, 0xff],
+			typ: TypedObj({
+				a: Int32,
+				b: Uint32,
+			}),
+			val: {
+				a: 2147483647,
+				b: 4294967295,
+			},
+			eq: objectEqual,
+		},
+		//#endregion
 	];
 
 	for(let i = 0; i < tests.length; ++i) {
@@ -996,7 +1187,7 @@ test("decode", t => {
 			const val = decode(bin, test.typ);
 			const eq = opEqual(test);
 			if(!eq(val, test.val)) {
-				t.error(`unexpected decoding at ${i} for '${fmtBuf(bin)}': ${val}, expected ${test.val}`);
+				t.error(`unexpected decoding at ${i} for '${fmtBuf(bin)}': ${JSON.stringify(val)}, expected ${JSON.stringify(test.val)}`);
 			}
 		} catch(e) {
 			t.error(`unexpected decoding error at ${i} for '${fmtBuf(bin)}': ${e}`);

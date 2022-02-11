@@ -88,25 +88,15 @@ export const Bool: Type<boolean> = {
 
 export const Int: Type<number> = {
 	enc(buf: WriteBuffer, v: number): void {
-		if(-128 <= v && v <= 127) {
-			if(v >= 0) {
-				buf.putUi8(posFixintTag(v));
-			} else if(v > -32) {
-				buf.putUi8(negFixintTag(v));
-			} else {
-				buf.putUi8(Tag.Int8);
-				buf.putUi8(v);
-			}
-		} else if(-32768 <= v && v <= 32767) {
-			buf.putI8(Tag.Int16);
-			buf.putI16(v);
-		} else if(-2147483648 <= v && v <= 2147483647) {
-			buf.putI8(Tag.Int32);
-			buf.putI32(v);
-		} else {
-			buf.putI8(Tag.Int64);
-			buf.putI64(v);
-		}
+		if (-128 <= v && v <= 127) {
+      Int8.enc(buf, v);
+    } else if (-32768 <= v && v <= 32767) {
+      Int16.enc(buf, v);
+    } else if (-2147483648 <= v && v <= 2147483647) {
+      Int32.enc(buf, v);
+    } else {
+      Int64.enc(buf, v);
+    }
 	},
 
 	dec(buf: ReadBuffer): number {
@@ -148,25 +138,65 @@ export const Int: Type<number> = {
 };
 
 
+export const Int8: Type<number> = {
+  enc(buf: WriteBuffer, v: number): void {
+    if (v >= 0) {
+      buf.putUi8(posFixintTag(v));
+    } else if (v > -32) {
+      buf.putUi8(negFixintTag(v));
+    } else {
+      buf.putUi8(Tag.Int8);
+      buf.putUi8(v);
+    }
+  },
+
+  dec: Int.dec,
+};
+
+
+export const Int16: Type<number> = {
+  enc(buf: WriteBuffer, v: number): void {
+    buf.putI8(Tag.Int16);
+    buf.putI16(v);
+  },
+
+  dec: Int.dec,
+};
+
+
+export const Int32: Type<number> = {
+  enc(buf: WriteBuffer, v: number): void {
+    buf.putI8(Tag.Int32);
+    buf.putI32(v);
+  },
+
+  dec: Int.dec,
+};
+
+
+export const Int64: Type<number> = {
+  enc(buf: WriteBuffer, v: number): void {
+    buf.putI8(Tag.Int64);
+    buf.putI64(v);
+  },
+
+  dec: Int.dec,
+};
+
+
 export const Uint: Type<number> = {
 	enc(buf: WriteBuffer, v: number): void {
-		if(v < 0) {
-			throw new Error(`not an uint: ${v}`);
-		} else if(v <= 127) {
-			buf.putUi8(posFixintTag(v));
-		} else if(v <= 255) {
-			buf.putUi8(Tag.Uint8);
-			buf.putUi8(v);
-		} else if(v <= 65535) {
-			buf.putUi8(Tag.Uint16);
-			buf.putUi16(v);
-		} else if(v <= 4294967295) {
-			buf.putUi8(Tag.Uint32);
-			buf.putUi32(v);
-		} else {
-			buf.putUi8(Tag.Uint64);
-			buf.putUi64(v);
-		}
+		if (v < 0) {
+      throw new Error(`not an uint: ${v}`);
+    } else if (v <= 255) {
+      Uint8.enc(buf, v);
+    } else if (v <= 65535) {
+      Uint16.enc(buf, v);
+    } else if (v <= 4294967295) {
+      Uint32.enc(buf, v);
+    } else {
+      Uint64.enc(buf, v);
+    }
 	},
 
 	dec(buf: ReadBuffer): number {
@@ -179,10 +209,54 @@ export const Uint: Type<number> = {
 };
 
 
+export const Uint8: Type<number> = {
+  enc(buf: WriteBuffer, v: number): void {
+    if (v <= 127) {
+      buf.putUi8(posFixintTag(v));
+    } else {
+      buf.putUi8(Tag.Uint8);
+      buf.putUi8(v);
+    }
+  },
+
+  dec: Uint.dec,
+};
+
+
+export const Uint16: Type<number> = {
+  enc(buf: WriteBuffer, v: number): void {
+    buf.putUi8(Tag.Uint16);
+    buf.putUi16(v);
+  },
+
+  dec: Uint.dec,
+};
+
+
+export const Uint32: Type<number> = {
+  enc(buf: WriteBuffer, v: number): void {
+    buf.putUi8(Tag.Uint32);
+    buf.putUi32(v);
+  },
+
+  dec: Uint.dec,
+};
+
+
+export const Uint64: Type<number> = {
+  enc(buf: WriteBuffer, v: number): void {
+    buf.putUi8(Tag.Uint64);
+    buf.putUi64(v);
+  },
+
+  dec: Uint.dec,
+};
+
+
 export const Float: Type<number> = {
 	enc(buf: WriteBuffer, v: number): void {
 		buf.putUi8(Tag.Float64);
-		buf.putF(v);
+		buf.putF64(v);
 	},
 
 	dec(buf: ReadBuffer): number {
@@ -198,6 +272,19 @@ export const Float: Type<number> = {
 			typeError(tag, "float");
 		}
 	},
+};
+
+
+export const Float64 = Float;
+
+
+export const Float32: Type<number> = {
+  enc(buf: WriteBuffer, v: number): void {
+    buf.putUi8(Tag.Float32);
+    buf.putF32(v);
+  },
+
+  dec: Float.dec,
 };
 
 
@@ -327,6 +414,31 @@ export function TypedMap<V>(keyT: Type<number|string>, valueT: Type<V>): Collect
 				res[k] = valueT.dec(buf);
 			}
 			return res;
+		},
+	};
+}
+
+export function TypedObj<T>(objT: Obj<Type<any>>): Collection<T> {
+	return {
+		encHeader: putMapHeader,
+		decHeader: getMapHeader,
+
+		enc(buf: WriteBuffer, v: T): void {
+			const props = Object.keys(v);
+			putMapHeader(buf, props.length);
+			props.forEach(p => {
+				Str.enc(buf, p)
+				objT[p].enc(buf, v[p])
+			});
+		},
+
+		dec(buf: ReadBuffer): T {
+			const res = {};
+			for(let n = getMapHeader(buf); n > 0; --n) {
+				const k = Str.dec(buf);
+				res[k] = objT[k].dec(buf);
+			}
+			return res as T;
 		},
 	};
 }

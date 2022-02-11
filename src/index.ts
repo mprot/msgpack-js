@@ -1,6 +1,7 @@
 import {
 	Type, Collection, Obj,
-	Nil, Bool, Int, Uint, Float, Bytes, Str, TypedArr, TypedMap, Time, Any, Arr, Map, Struct, Union,
+	Nil, Bool, Int, Uint, Float, Bytes, Str, TypedArr, TypedMap, TypedObj, Time, Any, Arr, Map, Struct, Union,
+	Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64, Float32, Float64,
 	structEncoder, structDecoder, unionEncoder, unionDecoder,
 } from "./types";
 import {
@@ -12,7 +13,8 @@ import {
 export {
 	WriteBuffer, ReadBuffer,
 	Type, Collection, Obj,
-	Nil, Bool, Int, Uint, Float, Bytes, Str, TypedArr, TypedMap, Time, Any, Arr, Map, Struct, Union,
+	Nil, Bool, Int, Uint, Float, Bytes, Str, TypedArr, TypedMap, TypedObj, Time, Any, Arr, Map, Struct, Union,
+	Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64, Float32, Float64,
 	structEncoder, structDecoder, unionEncoder, unionDecoder,
 	encode, decode,
 };
